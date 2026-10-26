@@ -1,21 +1,28 @@
 # Hardware notes & gotchas
 
-## Nano as a USB-serial adapter: wire **straight**, not crossed
+## Nano as a USB-serial adapter: wire **crossed**
 
-With the ATmega held in reset (RESET → GND), the Nano's `RX`/`TX` labels describe the
-ATmega's side, so the USB chip's TX actually comes out on the pin marked **RX**.
+Our Nano is an ATmega32U4 clone running the `tools/usb-serial-bridge` sketch, which sends
+on its own `TX` pin and listens on its own `RX` pin. So wire it like any two serial
+devices: TX to RX.
 
-| Nano | WT32-ETH01 |
+| Nano (32U4 + bridge sketch) | WT32-ETH01 |
 |------|------------|
-| `RX` (D0) | `RX0` |
-| `TX` (D1) | `TX0` |
+| `TX` (D1) → divider → | `RX0` |
+| `RX` (D0) | `TX0` |
 | `5V` | `5V` |
 | `GND` | `GND` |
-| `RESET` → `GND` | — |
 
-**Logic level:** the Nano's D0 drives 5 V into the ESP32's 3.3 V `RX0`. It usually
-survives, but it's out of spec. Add a divider on that one line (e.g. 1 kΩ in series,
-2 kΩ to GND). The ESP's 3.3 V `TX0` is read fine by the Nano.
+**Logic level:** the Nano's D1 drives 5 V into the ESP32's 3.3 V `RX0`. It usually
+survives, but it's out of spec. Add a divider on that one line (1 kΩ from D1 to `RX0`,
+2 kΩ from `RX0` to GND). The ESP's 3.3 V `TX0` is read fine by the Nano.
+
+**Baud rate:** flash at 460800 or lower. The bridge can't do 921600.
+
+> **Classic Nano (ATmega328P + CH340) instead?** Then you'd skip the bridge sketch and
+> jumper `RESET` → `GND`. The `RX`/`TX` labels describe the ATmega's side, so the CH340's
+> TX comes out on the pin marked **RX**, and the wiring is **straight**: `RX` (D0) → divider
+> → `RX0`, `TX` (D1) → `TX0`.
 
 **Power:** use the Nano's `5V` pin. Don't use its `3V3` pin, which can't supply an
 ESP32 with Ethernet running.

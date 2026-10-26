@@ -1,35 +1,30 @@
-# Hand-off: continuing on the PC
+# Hand-off
 
-_Last updated: 2026-10-26, moving from the Mac to the PC._
+_Last updated: 2026-10-26, on the PC._
 
 ## Where we are
 
-- The repo is set up and pushed: README, [hardware notes](docs/hardware-notes.md), the
-  [Nano check guide](docs/01-nano-check.md) and the `tools/nano-check` sketch. The sketch
-  compiles but hasn't been uploaded yet.
-- **Nano:** the Mac never saw it, because the only cable is USB-A → USB-C and the Mac has
-  no USB-A port. On the PC the **power LED lights up**. Serial hasn't been tested yet.
-- **Way of working:** you run every command and do every hardware step yourself. Claude
-  only guides, one step at a time.
+- **Step 1 (Nano check) is done.** All four checks in the [Nano check guide](docs/01-nano-check.md)
+  passed on the PC.
+- **The "Nano" is an ATmega32U4 clone**, not a classic ATmega328P + CH340. Windows lists
+  it as **Arduino Leonardo** (USB ID `2341:8036`), currently on **COM6**. The COM number
+  can change after uploads; `pio device list` shows the current one.
+- **Cable:** the USB-A → USB-C cable is charge-only (that's also why the Mac never saw
+  the board). Use the USB-C ↔ USB-C cable.
+- **The Nano currently runs `tools/usb-serial-bridge`**, which forwards USB ↔ D0/D1. The
+  loopback test passed at 115200, 230400 and 460800 baud; 921600 does not work.
+- **Way of working:** you run commands and do hardware steps yourself, and Claude
+  guides one step at a time. Claude may run a test when you ask for it.
 
 ## Pick up here
 
-1. Set up the PC:
-   - `git clone https://github.com/eliya-amanoeel/withernet.git`
-   - Install VS Code + the **PlatformIO IDE** extension.
-2. **Step A** of the [Nano check](docs/01-nano-check.md): Device Manager → Ports
-   (COM & LPT). Look for `USB-SERIAL CH340 (COMx)`. If it's under *Other devices* with
-   a warning icon, install the WCH `CH341SER.EXE` driver.
-3. **Steps B–D**: upload the sketch, run the serial echo test, then the pass-through
-   loopback test (RESET→GND, D0→D1).
-4. When all four pass, mark step 1 as done in the README status table.
+**Step 2:** the first serial flash of the WT32-ETH01 through the Nano. Because the Nano
+runs the bridge sketch, wire it **crossed**: Nano TX (D1) → divider → RX0, Nano RX (D0)
+→ TX0, plus 5V and GND. Jumper IO0→GND before powering on, and flash at **460800 or
+lower**. Details are in the [hardware notes](docs/hardware-notes.md).
 
 ## What comes after
 
-- **Step 2:** the first serial flash of the WT32-ETH01 through the Nano. Wire it
-  **straight through** (RX→RX0, TX→TX0, not crossed), add a voltage divider on the line
-  into RX0, and jumper IO0→GND before powering on. Details are in the
-  [hardware notes](docs/hardware-notes.md).
 - **Firmware/OTA (not decided yet):** the plan is our own PlatformIO firmware with
   ArduinoOTA, so after the first USB flash every update is the **Upload** button in
   VS Code over Wi-Fi. Still to check: whether arduino-esp32 can do NAT routing
@@ -40,6 +35,8 @@ _Last updated: 2026-10-26, moving from the Mac to the PC._
 
 ## Gotchas to remember
 
+- The bridge sketch has no DTR/RTS auto-reset, so entering the ESP32 bootloader is
+  manual: IO0→GND, then power-cycle (or pulse EN to GND).
 - GPIO0 is both the boot pin and the 50 MHz Ethernet clock. Remove the IO0→GND jumper
   after flashing.
 - Ethernet only starts if GPIO16 is driven high (it powers the oscillator).

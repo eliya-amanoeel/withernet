@@ -19,7 +19,7 @@ home router ))) 2.4 GHz Wi-Fi ))) WT32-ETH01 ──RJ-45──> Nibe / Checkwatt
 
 | Step | What | Status |
 |------|------|--------|
-| 1 | [Check the Arduino Nano still works](docs/01-nano-check.md) | in progress |
+| 1 | [Check the Arduino Nano still works](docs/01-nano-check.md) | done |
 | 2 | First serial flash of the WT32-ETH01 via the Nano | todo |
 | 3 | Bridge firmware (Wi-Fi uplink → Ethernet downlink) | todo |
 | 4 | OTA updates from VS Code | todo |
@@ -28,12 +28,14 @@ home router ))) 2.4 GHz Wi-Fi ))) WT32-ETH01 ──RJ-45──> Nibe / Checkwatt
 
 ```
 docs/               guides, in the order you need them
-tools/nano-check/   PlatformIO sketch to sanity-check the Nano
+tools/nano-check/          PlatformIO sketch to sanity-check the Nano
+tools/usb-serial-bridge/   turns the Nano into a USB-serial adapter for flashing
 ```
 
 ## Prerequisites
 
 - VS Code with the **PlatformIO IDE** extension
-- A USB data cable (not charge-only) for the Nano
+- A USB data cable (not charge-only) for the Nano. Our USB-A → USB-C cable turned out
+  to be charge-only; a USB-C ↔ USB-C cable works.
 
 See also: [hardware notes and gotchas](docs/hardware-notes.md).

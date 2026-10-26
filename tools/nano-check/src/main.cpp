@@ -4,14 +4,22 @@
 
 unsigned long lastBlink = 0;
 bool ledOn = false;
+bool greeted = false;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
-  Serial.println(F("withernet nano-check: alive. Type something, it will be echoed."));
 }
 
 void loop() {
+  // On a 32U4 the serial port is native USB, so anything printed before the
+  // monitor opens is lost. Greet once a monitor connects, without blocking the blink.
+  if (Serial && !greeted) {
+    greeted = true;
+    Serial.println(F("withernet nano-check: alive. Type something, it will be echoed."));
+  }
+
+
   if (millis() - lastBlink >= 250) {
     lastBlink = millis();
     ledOn = !ledOn;
