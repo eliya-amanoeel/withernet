@@ -15,6 +15,8 @@ home router ))) 2.4 GHz Wi-Fi ))) WT32-ETH01 ──RJ-45──> Nibe / Checkwatt
 
 ## Status
 
+> Picking this up again? Start with [HANDOFF.md](HANDOFF.md).
+
 | Step | What | Status |
 |------|------|--------|
 | 1 | [Check the Arduino Nano still works](docs/01-nano-check.md) | in progress |
