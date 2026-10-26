@@ -6,23 +6,26 @@ an upload, and serial works in both directions.
 
 ## A. Does the computer see it?
 
-Plug the Nano in with a **data** cable, then:
+Plug the Nano in with a **data** cable. The power LED should light.
 
-```sh
-ls /dev/cu.*
-```
+**Windows:** open **Device Manager → Ports (COM & LPT)**. You should see an entry such as
+`USB-SERIAL CH340 (COM3)`; write down the COM number. If it appears under *Other devices*
+with a yellow warning icon instead, the CH340 driver is missing. Install it from WCH
+(`CH341SER.EXE`), then unplug and replug the Nano.
 
-You should see a new entry such as `/dev/cu.usbserial-XXXX` (CH340 clones) or
-`/dev/cu.usbserial-AXXXXXXX` (FTDI). Recent macOS has the CH340 driver built in.
+**macOS:** run `ls /dev/cu.*` and look for a new `/dev/cu.usbserial-XXXX` entry. On Apple
+Silicon Macs, accept the *"Allow accessory to connect?"* prompt.
 
 - **Nothing new appears.** Try another cable first (charge-only cables are the most
-  common cause), then another USB port or adapter.
-- **The power LED doesn't light.** The board or the cable is dead.
+  common cause), then another USB port.
+- **The power LED doesn't light.** The cable or port isn't supplying power. Try another
+  one before blaming the board.
 
 ## B. Upload the test sketch
 
 In VS Code: open `tools/nano-check` as a PlatformIO project, then click **Upload**
-(→ in the bottom bar). From a terminal instead:
+(→ in the bottom bar). From a terminal instead (use **PlatformIO: New Terminal** from the
+command palette so `pio` is on the PATH):
 
 ```sh
 cd tools/nano-check
