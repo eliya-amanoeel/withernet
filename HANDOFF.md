@@ -20,6 +20,20 @@ _Last updated: 2026-10-31, on the Mac._
 
 ## Pick up here
 
+**Wiring for the first flash is done (2026-10-31, no divider for now):**
+
+| Wire | From | To |
+|------|------|----|
+| black | Nano `GND` | ESP `GND` (right column, above `5V`) |
+| red | Nano `VCC` | ESP `5V` |
+| brown | Nano `TX` | ESP `RX0` |
+| orange | Nano `RX` | ESP `TX0` |
+| white | ESP `IO0` | ESP `GND` (just below `IO0`) |
+
+Next: plug the Nano into the **PC** (the USB-C cable didn't work on the Mac this time)
+and check that a light comes on on the ESP. Then test the serial connection.
+
+
 **Step 2:** the first serial flash of the WT32-ETH01 through the Nano. Because the Nano
 runs the bridge sketch, wire it **crossed**: Nano TX (D1) → divider → RX0, Nano RX (D0)
 → TX0, plus 5V and GND. Jumper IO0→GND before powering on, and flash at **460800 or
