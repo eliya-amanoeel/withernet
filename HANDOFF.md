@@ -1,6 +1,6 @@
 # Hand-off
 
-_Last updated: 2026-10-26, on the PC._
+_Last updated: 2026-10-31, on the Mac._
 
 ## Where we are
 
@@ -13,6 +13,8 @@ _Last updated: 2026-10-26, on the PC._
   the board). Use the USB-C ↔ USB-C cable.
 - **The Nano currently runs `tools/usb-serial-bridge`**, which forwards USB ↔ D0/D1. The
   loopback test passed at 115200, 230400 and 460800 baud; 921600 does not work.
+- **WT32-ETH01 is here:** board says "ESP32-ETH01 V1.4", header pins already soldered,
+  no USB port (so the first flash has to go through the Nano).
 - **Way of working:** you run commands and do hardware steps yourself, and Claude
   guides one step at a time. Claude may run a test when you ask for it.
 
@@ -25,13 +27,28 @@ lower**. Details are in the [hardware notes](docs/hardware-notes.md).
 
 ## What comes after
 
-- **Firmware/OTA (not decided yet):** the plan is our own PlatformIO firmware with
+- **Firmware: we build our own (decided 2026-10-31).** A ready-made option exists
+  (`martin-ger/esp32_ethernet_router`, ESP-IDF, lists WT32-ETH01 support), but there's
+  no widely used standard for Wi-Fi → Ethernet on ESP32, so we write our own. The plan is PlatformIO with
   ArduinoOTA, so after the first USB flash every update is the **Upload** button in
   VS Code over Wi-Fi. Still to check: whether arduino-esp32 can do NAT routing
   between Wi-Fi (uplink) and Ethernet (downlink). If it can't, fall back to
   ESP-IDF or an existing NAT-router firmware.
-- **Hardware still needed:** the WT32-ETH01 board(s), a USB cable for 5V power, and two
-  resistors (1 kΩ + 2 kΩ) for the voltage divider.
+- **Management (decided 2026-10-31):**
+  - **Status page:** read-only (or behind a password). Shows Wi-Fi signal, IP
+    addresses, and whether the Nibe/Checkwatt is connected.
+  - **Setup hotspot:** if the dongle can't join the home Wi-Fi, it opens its own
+    password-protected hotspot with a page for entering the Wi-Fi name and password.
+    No reflashing when the Wi-Fi password changes.
+  - **OTA updates** need a password.
+- **Power:** see [hardware notes](docs/hardware-notes.md#power). Flashing: the Nano
+  powers the ESP. Running: USB charger → USB-C breakout → ESP `5V`/`GND`.
+- **Security (to do in the firmware):** the three passwords above. NAT already keeps
+  the Nibe/Checkwatt unreachable from the home LAN; whether to open the Nibe's local
+  page via port forwarding is still to discuss.
+- **Hardware still needed:** two resistors (1 kΩ + 2 kΩ) for flashing, female-female
+  jumper wires. Have: a USB breakout with pins (check it has 5.1 kΩ CC resistors if
+  it's USB-C).
 
 ## Gotchas to remember
 

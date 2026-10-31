@@ -24,8 +24,23 @@ survives, but it's out of spec. Add a divider on that one line (1 kΩ from D1 to
 > TX comes out on the pin marked **RX**, and the wiring is **straight**: `RX` (D0) → divider
 > → `RX0`, `TX` (D1) → `TX0`.
 
-**Power:** use the Nano's `5V` pin. Don't use its `3V3` pin, which can't supply an
-ESP32 with Ethernet running.
+**Power while flashing:** use the Nano's `5V` pin. Don't use its `3V3` pin, which can't
+supply an ESP32 with Ethernet running.
+
+The divider is only on the `TX` → `RX0` data wire. The power wires (`5V`, `GND`) and
+`RX` ← `TX0` go straight across.
+
+## Power
+
+| When | Source | Wiring |
+|------|--------|--------|
+| Flashing | PC USB → Nano | Nano `5V` → ESP `5V`, `GND` → `GND` |
+| Running | USB phone charger (5 V, 1 A+) → USB breakout | breakout `5V`/`VBUS` → ESP `5V`, `GND` → `GND` (female-female jumpers, no soldering) |
+
+- Never connect both sources at once.
+- Never put 5 V on a `3V3` pin. No reverse-polarity protection, so don't swap 5V/GND.
+- A USB-C breakout needs 5.1 kΩ CC resistors on board, or a USB-C charger won't
+  supply power.
 
 ## Boot mode: GPIO0
 
