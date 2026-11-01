@@ -1,34 +1,6 @@
 # Hardware notes & gotchas
 
-## Nano as a USB-serial adapter: wire **crossed**
-
-Our Nano is an ATmega32U4 clone running the `tools/usb-serial-bridge` sketch, which sends
-on its own `TX` pin and listens on its own `RX` pin. So wire it like any two serial
-devices: TX to RX.
-
-| Nano (32U4 + bridge sketch) | WT32-ETH01 |
-|------|------------|
-| `TX` (D1) → divider → | `RX0` |
-| `RX` (D0) | `TX0` |
-| `5V` | `5V` |
-| `GND` | `GND` |
-
-**Logic level:** the Nano's D1 drives 5 V into the ESP32's 3.3 V `RX0`. It usually
-survives, but it's out of spec. Add a divider on that one line (1 kΩ from D1 to `RX0`,
-2 kΩ from `RX0` to GND). The ESP's 3.3 V `TX0` is read fine by the Nano.
-
-**Baud rate:** flash at 460800 or lower. The bridge can't do 921600.
-
-> **Classic Nano (ATmega328P + CH340) instead?** Then you'd skip the bridge sketch and
-> jumper `RESET` → `GND`. The `RX`/`TX` labels describe the ATmega's side, so the CH340's
-> TX comes out on the pin marked **RX**, and the wiring is **straight**: `RX` (D0) → divider
-> → `RX0`, `TX` (D1) → `TX0`.
-
-**Power while flashing:** use the Nano's `5V` pin. Don't use its `3V3` pin, which can't
-supply an ESP32 with Ethernet running.
-
-The divider is only on the `TX` → `RX0` data wire. The power wires (`5V`, `GND`) and
-`RX` ← `TX0` go straight across.
+Wiring for flashing is in the [flashing guide](01-flashing.md).
 
 ## Power
 
@@ -42,10 +14,10 @@ The divider is only on the `TX` → `RX0` data wire. The power wires (`5V`, `GND
 - A USB-C breakout needs 5.1 kΩ CC resistors on board, or a USB-C charger won't
   supply power.
 
-## Boot mode: GPIO0
+## GPIO0: boot pin and Ethernet clock
 
-Jumper `IO0` → `GND` *before* powering on to enter the bootloader. Remove it
-afterwards: on the WT32-ETH01, GPIO0 is also the 50 MHz Ethernet clock input.
+`IO0` → `GND` at power-up enters the bootloader. The same pin is the 50 MHz Ethernet clock
+input, so remove the jumper after flashing.
 
 ## WT32-ETH01 Ethernet pins
 
@@ -60,9 +32,28 @@ afterwards: on the WT32-ETH01, GPIO0 is also the 50 MHz Ethernet clock input.
 
 Ethernet won't start unless GPIO16 is driven high.
 
-## Topology: NAT router, not a true bridge
+## Topology: MAC-cloning bridge
 
-An ESP32 in Wi-Fi client mode can't do a transparent layer-2 bridge, so the dongle routes
-with NAT: the devices behind it get their own small subnet. Outbound cloud traffic (Nibe
-myUplink, Checkwatt) works as normal. Anything that needs to reach those devices *from*
-the home LAN (local web UI, Modbus) needs port forwarding on the dongle.
+A Wi-Fi client (station) may only send frames from its own MAC, so an ESP32 can't be a
+plain layer-2 bridge for other devices. Powerline gets around this because both adapters
+speak the same protocol; with Wi-Fi the other end is the Deco, which follows the normal
+client rules.
+
+The dongle sidesteps that by **cloning the device's MAC**:
+
+1. Ethernet comes up; the dongle waits for the first frame from the device and reads
+   its source MAC.
+2. It sets that MAC on its Wi-Fi station interface and joins the Deco.
+3. It forwards every frame unchanged: Ethernet → Wi-Fi and Wi-Fi → Ethernet.
+
+To the Deco, the Nibe/Checkwatt is simply a Wi-Fi client. It gets its IP from the Deco,
+shows up in the Deco app under its real MAC, and is reachable from the home LAN like any
+other device. No NAT and no port forwarding.
+
+Limits:
+
+- **One device per dongle.** Frames from any other MAC are dropped.
+- **No address of its own.** The dongle borrows the device's identity, so OTA and a
+  status page need a separate management IP (planned for later).
+- **2.4 GHz only**, roughly 5–20 Mbps.
+- Uses undocumented ESP-IDF calls; pin the IDF version once it works.
