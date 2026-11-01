@@ -17,7 +17,12 @@ devices: TX to RX.
 survives, but it's out of spec. Add a divider on that one line (1 kΩ from D1 to `RX0`,
 2 kΩ from `RX0` to GND). The ESP's 3.3 V `TX0` is read fine by the Nano.
 
-**Baud rate:** flash at 460800 or lower. The bridge can't do 921600.
+**Baud rate:** flash at 115200. The Nano's 16 MHz clock is 8.5% off at 460800 and 3.5%
+off at 230400, so only 115200 works against a real ESP32. A loopback test passes at
+higher rates because both sides are off by the same amount.
+
+**DTR:** the 32U4 only passes data on to the PC while DTR is on. esptool 5 turns it off
+on Windows, so `firmware/esptool.cfg` turns it back on.
 
 > **Classic Nano (ATmega328P + CH340) instead?** Then you'd skip the bridge sketch and
 > jumper `RESET` → `GND`. The `RX`/`TX` labels describe the ATmega's side, so the CH340's
@@ -37,6 +42,9 @@ The divider is only on the `TX` → `RX0` data wire. The power wires (`5V`, `GND
 | Flashing | PC USB → Nano | Nano `5V` → ESP `5V`, `GND` → `GND` |
 | Running | USB phone charger (5 V, 1 A+) → USB breakout | breakout `5V`/`VBUS` → ESP `5V`, `GND` → `GND` (female-female jumpers, no soldering) |
 
+- The Nano's 5V is only good for flashing. With Ethernet and routing running, it sagged
+  and the ESP crashed at random (2026-11-01). Use the charger, and keep only the Nano's
+  `GND`, `TX` and `RX` wires connected for the monitor.
 - Never connect both sources at once.
 - Never put 5 V on a `3V3` pin. No reverse-polarity protection, so don't swap 5V/GND.
 - A USB-C breakout needs 5.1 kΩ CC resistors on board, or a USB-C charger won't
