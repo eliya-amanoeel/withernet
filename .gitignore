@@ -5,3 +5,5 @@
 .vscode/ipch
 .DS_Store
 secrets.ini
+secrets.h
+sdkconfig.wt32-eth01

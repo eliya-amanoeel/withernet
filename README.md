@@ -51,7 +51,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 
 ```
 docs/                      guides, in the order you need them
-firmware/bridge/           the bridge firmware (step 3, not written yet)
+firmware/bridge/           the bridge firmware (ESP-IDF, MAC cloning)
 tools/usb-serial-bridge/   turns the Nano into a USB-serial adapter for flashing
 ```
 

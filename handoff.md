@@ -25,19 +25,30 @@ _Last updated: 2026-11-01, on the Mac._
 
 ## Pick up here
 
-**Step 3: minimal bridge firmware**, in `firmware/bridge`:
+**Step 3: minimal bridge firmware.** Written in `firmware/bridge` (2026-11-01) and it
+compiles (ESP-IDF 5.3.1, platform `espressif32@6.9.0`), but it **hasn't run on the board
+yet**.
 
-- PlatformIO, **ESP-IDF** framework (not Arduino): the bridge needs low-level Wi-Fi calls.
-- Wi-Fi name and password in `secrets.h`, ignored by git.
-- Start Ethernet (GPIO16 high, LAN8720), wait for the first frame from the device and
-  learn its MAC.
-- Set that MAC on the Wi-Fi station interface, join the Deco.
-- Forward frames both ways, unchanged.
-- Onboard LED shows link status; serial log at 115200.
+- Starts Ethernet (GPIO16 high, LAN8720) in promiscuous mode, learns the MAC from the
+  first frame the device sends, sets it on the Wi-Fi station interface, joins the
+  strongest Deco, then forwards frames both ways.
+- Frames from any other MAC are ignored (logged once). Reboot to learn a new device.
+- Wi-Fi name and password in `src/secrets.h` (ignored by git): copy
+  `src/secrets.example.h` and fill it in.
+- No status LED: the WT32-ETH01 has only a power LED. Watch the serial log at 115200
+  instead.
 - **Nothing else yet**: no OTA, status page or hotspot.
 
-**Bench test:** dongle into the laptop's Ethernet port. Pass = the laptop gets an IP from
-the Deco and shows up in the Deco app under its own MAC.
+**Bench test, next:**
+
+1. Create `firmware/bridge/src/secrets.h` with the real Wi-Fi name and password.
+2. Flash it ([flashing guide](docs/01-flashing.md)), remove the IO0 jumper, power up with
+   the Nano still connected and open the monitor at 115200.
+3. Plug the laptop's Ethernet port into the dongle and turn the laptop's Wi-Fi off.
+4. Expect in the log: `Ethernet link up`, `device MAC xx:xx:..., joining Wi-Fi as it`,
+   `Wi-Fi connected`.
+5. Pass = the laptop gets an IP from the Deco, can browse, and shows up in the Deco app
+   under its own Ethernet MAC.
 
 ## What comes after
 
