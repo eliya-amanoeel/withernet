@@ -4,8 +4,8 @@ _Last updated: 2026-11-02, on the PC._
 
 ## Where we are
 
-- **Steps 1 and 2 are done.** The Nano works as a USB-serial adapter, and the WT32-ETH01
-  has been flashed through it several times.
+- **Steps 1–3 are done, step 4 is under way.** Both WT32-ETH01 boards are flashed and
+  bench tested. Both dongles (Nibe and Checkwatt) have been live since 2026-11-02.
 - **The plan changed (2026-11-01): MAC-cloning bridge, not NAT.** The goal is a
   transparent passthrough where the Deco assigns the device's IP, like the Powerline
   adapters did. See [README](README.md#how-it-works-mac-cloning).
@@ -18,17 +18,27 @@ _Last updated: 2026-11-02, on the PC._
   us), UniFi Device Bridge (needs UniFi APs), NAT routing (router wouldn't see the
   devices).
 - **The "Nano" is an ATmega32U4 clone** (shows up as Arduino Leonardo, `2341:8036`), runs
-  `tools/usb-serial-bridge`, flashes at 460800 or lower. Use the USB-C ↔ USB-C cable; the
+  `tools/usb-serial-bridge`, flashes at 115200 on the PC. Use the USB-C ↔ USB-C cable; the
   USB-A → USB-C one is charge-only. How to flash: [flashing guide](docs/01-flashing.md).
 - **Way of working:** you run commands and do hardware steps yourself, and Claude
   guides one step at a time. Claude may run a test when you ask for it.
 
 ## Pick up here
 
-**Step 3 is done: the bench test passed (2026-11-02).** This board becomes the Nibe
-dongle. With the Mac on Ethernet behind it (Wi-Fi off), the Mac got `192.168.68.74` from
-the Deco, reached the internet, and showed up in the Deco app under its own MAC. Ping to
-the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
+**Step 4: installing and watching (from 2026-11-02).**
+
+- **Nibe dongle:** installed on its own power supply and live since 2026-11-02. The Nibe
+  shows up in the Deco app. It runs the build from just before the tidy-up (same
+  behaviour, plus a stats line in the serial log every 10 s); reflash only if it comes
+  back to the Nano anyway.
+- **Checkwatt dongle:** flashed with the current build, bench tested with the Mac (link
+  up, MAC learned, Wi-Fi connected), and installed on its own power supply on 2026-11-02.
+- **Next:** let both run until about 2026-11-09. If they stay stable (visible in the Deco
+  app, the Nibe and Checkwatt apps don't drop out), remove the Powerline adapters.
+
+**Bench test (2026-11-02):** with the Mac on Ethernet behind the dongle (Wi-Fi off), the
+Mac got `192.168.68.74` from the Deco, reached the internet, and showed up in the Deco app
+under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
 
 - The firmware (`firmware/bridge`) starts Ethernet (GPIO16 high, LAN8720) in promiscuous
   mode. It learns the MAC from the first frame the device sends, sets it on the Wi-Fi
@@ -42,14 +52,11 @@ the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
   Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after; measured with
   temporary counters, since removed). Fine for the Nibe; tune only if it causes trouble.
 - No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
-- No OTA, status page or hotspot yet.
-
-**Next: step 4**, installing the dongle at the Nibe (see below).
+- No OTA, status page or hotspot yet. Adding any of them means one more wired flash per
+  dongle; after OTA, updates go over Wi-Fi.
 
 ## What comes after
 
-- **Step 4:** install one dongle at the Nibe and one at the Checkwatt, then remove both
-  Powerline adapters. Let it run for a week.
 - **Step 5, extras, one at a time:**
   - **Management IP:** the dongle borrows the device's MAC, so it has no address of its
     own. Plan: a fixed IP outside the Deco's DHCP range that the dongle answers itself.
@@ -59,10 +66,8 @@ the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
   - **Status page:** read-only or password protected. Wi-Fi signal, learned MAC, link state.
 - **Power:** see [hardware notes](docs/hardware-notes.md#power). Running: USB charger →
   USB-C breakout → ESP `5V`/`GND`.
-- **Hardware still needed:** a second WT32-ETH01 for the Checkwatt, female-female jumper
-  wires. Optional: 1 kΩ + 2 kΩ resistors for the flashing divider (only used while
-  flashing through the Nano). Have: a USB breakout with pins
-  (check it has 5.1 kΩ CC resistors if it's USB-C).
+- **Hardware:** nothing needed. Optional: 1 kΩ + 2 kΩ resistors for the flashing divider
+  (only used while flashing through the Nano).
 
 ## Gotchas to remember
 
@@ -82,7 +87,10 @@ the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
 - **No divider in the flashing setup:** Nano `TX` (5 V) goes straight into ESP `RX0`
   (3.3 V). It works, but each flashing session stresses the pin. Only matters while the
   Nano is connected; an installed dongle on its own power supply doesn't need it. Add the
-  1 kΩ/2 kΩ divider to the flashing wiring if the second board will be flashed a lot.
+  1 kΩ/2 kΩ divider to the flashing wiring if the boards will be flashed a lot.
+- If an upload fails with `No serial data received` even with `no_reset`, check the board
+  is in download mode (monitor open, touch EN to GND, expect `waiting for download`),
+  then retry. The second board's first attempt failed this way and the retry worked.
 - On the PC, `pio` isn't on the PATH in a normal terminal. Use a PlatformIO terminal or
   `& "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"`.
 - The serial monitor misses the boot log if the ESP started before it opened. Touch EN
