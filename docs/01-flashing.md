@@ -69,7 +69,11 @@ pio run -t upload --upload-port COM6
 ```
 
 **Speed:** flash at **460800 baud or lower** (`upload_speed` in `platformio.ini`). A 16 MHz
-AVR can't generate 921600 accurately.
+AVR can't generate 921600 accurately. On the PC, only 115200 works.
+
+**No auto-reset:** set `board_upload.before_reset = no_reset` in `platformio.ini`. The
+Nano drops data to the PC while DTR/RTS are low, and esptool's default reset leaves them
+low, so the upload fails with `No serial data received`.
 
 The bridge sketch has no auto-reset, so to flash again: unplug and replug the Nano (or
 briefly touch `EN` to `GND`) with the boot jumper still in place.

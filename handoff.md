@@ -1,6 +1,6 @@
 # Hand-off
 
-_Last updated: 2026-11-01, on the Mac._
+_Last updated: 2026-11-02, on the PC._
 
 ## Where we are
 
@@ -25,30 +25,28 @@ _Last updated: 2026-11-01, on the Mac._
 
 ## Pick up here
 
-**Step 3: minimal bridge firmware.** Written in `firmware/bridge` (2026-11-01) and it
-compiles (ESP-IDF 5.3.1, platform `espressif32@6.9.0`), but it **hasn't run on the board
-yet**.
+**Step 3 is done: the bench test passed (2026-11-02).** This board becomes the Nibe
+dongle. With the Mac on Ethernet behind it (Wi-Fi off), the Mac got `192.168.68.74` from
+the Deco, reached the internet, and showed up in the Deco app under its own MAC. Ping to
+the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
 
-- Starts Ethernet (GPIO16 high, LAN8720) in promiscuous mode, learns the MAC from the
-  first frame the device sends, sets it on the Wi-Fi station interface, joins the
-  strongest Deco, then forwards frames both ways.
+- The firmware (`firmware/bridge`) starts Ethernet (GPIO16 high, LAN8720) in promiscuous
+  mode. It learns the MAC from the first frame the device sends, sets it on the Wi-Fi
+  station interface, joins the strongest Deco, then forwards frames both ways.
 - Frames from any other MAC are ignored (logged once). Reboot to learn a new device.
-- Wi-Fi name and password in `src/secrets.h` (ignored by git): copy
-  `src/secrets.example.h` and fill it in.
-- No status LED: the WT32-ETH01 has only a power LED. Watch the serial log at 115200
-  instead.
-- **Nothing else yet**: no OTA, status page or hotspot.
+- Joins the Deco **IoT network** (2.4 GHz only, WPA2). Name and password are in
+  `src/secrets.h` (ignored by git); copy `src/secrets.example.h` for a new board.
+- Wi-Fi power save is off: with it on, pings jumped to hundreds of ms.
+- The serial log (115200) shows the Ethernet link speed and duplex, plus a stats line
+  every 10 s with frames forwarded and dropped per direction.
+- **Known:** right after the link comes up, the device's first burst of traffic drops some
+  Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after). Fine for the
+  Nibe; tune only if it causes trouble.
+- No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
+- No OTA, status page or hotspot yet.
 
-**Bench test, next:**
-
-1. Create `firmware/bridge/src/secrets.h` with the real Wi-Fi name and password.
-2. Flash it ([flashing guide](docs/01-flashing.md)), remove the IO0 jumper, power up with
-   the Nano still connected and open the monitor at 115200.
-3. Plug the laptop's Ethernet port into the dongle and turn the laptop's Wi-Fi off.
-4. Expect in the log: `Ethernet link up`, `device MAC xx:xx:..., joining Wi-Fi as it`,
-   `Wi-Fi connected`.
-5. Pass = the laptop gets an IP from the Deco, can browse, and shows up in the Deco app
-   under its own Ethernet MAC.
+**Next: step 4**, installing the dongle at the Nibe (see below). Before that, add the
+divider on `RX0` (see Gotchas).
 
 ## What comes after
 
@@ -78,6 +76,19 @@ yet**.
 - Don't put the dongle inside a metal cabinet (fuse box): run a short cable in instead.
 - The bridge sketch has no DTR/RTS auto-reset, so entering the ESP32 bootloader is
   manual: IO0→GND, then power-cycle (or pulse EN to GND).
+- **Uploads need `board_upload.before_reset = no_reset`** (set in `platformio.ini`). The
+  Nano's USB serial drops data to the PC while DTR/RTS are low, and esptool's default
+  reset leaves them low. Without it: `Failed to connect to ESP32: No serial data received`.
+- **On the PC, only 115200 baud uploads work** (`upload_speed` in `platformio.ini`).
+- **No divider on the PC setup yet:** Nano `TX` (5 V) goes straight into ESP `RX0`
+  (3.3 V). It works, but it can slowly damage the pin. Add the 1 kΩ/2 kΩ divider.
+- On the PC, `pio` isn't on the PATH in a normal terminal. Use a PlatformIO terminal or
+  `& "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"`.
+- The serial monitor misses the boot log if the ESP started before it opened. Touch EN
+  to GND to restart it with the monitor open.
+- Don't bench test from the PC's Ethernet: it's bound to a Hyper-V external switch, and
+  traffic didn't get through (probably the dongle learned a MAC Windows doesn't use, not
+  confirmed). Use the Mac.
 - GPIO0 is both the boot pin and the 50 MHz Ethernet clock. Remove the IO0→GND jumper
   after flashing.
 - Ethernet only starts if GPIO16 is driven high (it powers the oscillator).
