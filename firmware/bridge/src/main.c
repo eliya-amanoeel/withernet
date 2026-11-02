@@ -37,7 +37,6 @@ static const char *TAG = "bridge";
 #define QUEUE_LEN          40
 #define QUEUE_TIMEOUT_MS   100
 #define WIFI_TX_TIMEOUT_MS 20
-#define STATS_INTERVAL_MS  10000
 
 typedef struct {
     uint8_t *packet;
@@ -51,21 +50,12 @@ static bool s_mac_learned;
 static bool s_eth_up;
 static bool s_wifi_up;
 
-// Frame counters for the periodic stats log. Written from several tasks
-// without locking; good enough for diagnostics.
-static volatile uint32_t s_wifi2eth_ok, s_wifi2eth_fail;
-static volatile uint32_t s_eth2wifi_ok, s_eth2wifi_fail, s_queue_full;
-
 // Wi-Fi -> Ethernet. Runs in the Wi-Fi task; the driver already drops frames
 // that aren't for the cloned MAC (or broadcast/multicast).
 static esp_err_t wifi_rx(void *buffer, uint16_t len, void *eb)
 {
     if (s_eth_up) {
-        if (esp_eth_transmit(s_eth_handle, buffer, len) == ESP_OK) {
-            s_wifi2eth_ok++;
-        } else {
-            s_wifi2eth_fail++;
-        }
+        esp_eth_transmit(s_eth_handle, buffer, len);
     }
     esp_wifi_internal_free_rx_buffer(eb);
     return ESP_OK;
@@ -77,7 +67,6 @@ static esp_err_t eth_rx(esp_eth_handle_t eth_handle, uint8_t *buffer, uint32_t l
 {
     eth_frame_t frame = { .packet = buffer, .length = len };
     if (xQueueSend(s_eth2wifi_queue, &frame, pdMS_TO_TICKS(QUEUE_TIMEOUT_MS)) != pdTRUE) {
-        s_queue_full++;
         free(buffer);
         return ESP_FAIL;
     }
@@ -126,16 +115,10 @@ static void eth2wifi_task(void *arg)
             }
         } else if (s_wifi_up) {
             int waited = 0;
-            esp_err_t err;
-            while ((err = esp_wifi_internal_tx(WIFI_IF_STA, frame.packet, frame.length)) != ESP_OK
+            while (esp_wifi_internal_tx(WIFI_IF_STA, frame.packet, frame.length) != ESP_OK
                    && waited < WIFI_TX_TIMEOUT_MS) {
                 vTaskDelay(pdMS_TO_TICKS(2));
                 waited += 2;
-            }
-            if (err == ESP_OK) {
-                s_eth2wifi_ok++;
-            } else {
-                s_eth2wifi_fail++;
             }
         }
         free(frame.packet);
@@ -188,16 +171,6 @@ static void eth_event_handler(void *arg, esp_event_base_t base, int32_t id, void
         break;
     default:
         break;
-    }
-}
-
-// Logs frames forwarded and dropped per direction, as totals since boot.
-static void stats_task(void *arg)
-{
-    while (true) {
-        vTaskDelay(pdMS_TO_TICKS(STATS_INTERVAL_MS));
-        ESP_LOGI(TAG, "stats wifi->eth ok %lu fail %lu | eth->wifi ok %lu fail %lu queue-full %lu",
-                 s_wifi2eth_ok, s_wifi2eth_fail, s_eth2wifi_ok, s_eth2wifi_fail, s_queue_full);
     }
 }
 
@@ -269,7 +242,6 @@ void app_main(void)
     ESP_LOGI(TAG, "withernet bridge starting, waiting for a device on Ethernet");
     s_eth2wifi_queue = xQueueCreate(QUEUE_LEN, sizeof(eth_frame_t));
     xTaskCreate(eth2wifi_task, "eth2wifi", 4096, NULL, configMAX_PRIORITIES - 3, NULL);
-    xTaskCreate(stats_task, "stats", 3072, NULL, tskIDLE_PRIORITY + 1, NULL);
 
     init_wifi();
     init_ethernet();

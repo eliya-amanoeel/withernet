@@ -37,16 +37,14 @@ the router: 0% loss, mostly 2–10 ms with spikes to ~80 ms.
 - Joins the Deco **IoT network** (2.4 GHz only, WPA2). Name and password are in
   `src/secrets.h` (ignored by git); copy `src/secrets.example.h` for a new board.
 - Wi-Fi power save is off: with it on, pings jumped to hundreds of ms.
-- The serial log (115200) shows the Ethernet link speed and duplex, plus a stats line
-  every 10 s with frames forwarded and dropped per direction.
+- The serial log (115200) shows the Ethernet link speed and duplex on link up.
 - **Known:** right after the link comes up, the device's first burst of traffic drops some
-  Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after). Fine for the
-  Nibe; tune only if it causes trouble.
+  Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after; measured with
+  temporary counters, since removed). Fine for the Nibe; tune only if it causes trouble.
 - No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
 - No OTA, status page or hotspot yet.
 
-**Next: step 4**, installing the dongle at the Nibe (see below). Before that, add the
-divider on `RX0` (see Gotchas).
+**Next: step 4**, installing the dongle at the Nibe (see below).
 
 ## What comes after
 
@@ -61,8 +59,9 @@ divider on `RX0` (see Gotchas).
   - **Status page:** read-only or password protected. Wi-Fi signal, learned MAC, link state.
 - **Power:** see [hardware notes](docs/hardware-notes.md#power). Running: USB charger →
   USB-C breakout → ESP `5V`/`GND`.
-- **Hardware still needed:** 1 kΩ + 2 kΩ resistors for the TX divider, female-female
-  jumper wires, a second WT32-ETH01 for the Checkwatt. Have: a USB breakout with pins
+- **Hardware still needed:** a second WT32-ETH01 for the Checkwatt, female-female jumper
+  wires. Optional: 1 kΩ + 2 kΩ resistors for the flashing divider (only used while
+  flashing through the Nano). Have: a USB breakout with pins
   (check it has 5.1 kΩ CC resistors if it's USB-C).
 
 ## Gotchas to remember
@@ -80,8 +79,10 @@ divider on `RX0` (see Gotchas).
   Nano's USB serial drops data to the PC while DTR/RTS are low, and esptool's default
   reset leaves them low. Without it: `Failed to connect to ESP32: No serial data received`.
 - **On the PC, only 115200 baud uploads work** (`upload_speed` in `platformio.ini`).
-- **No divider on the PC setup yet:** Nano `TX` (5 V) goes straight into ESP `RX0`
-  (3.3 V). It works, but it can slowly damage the pin. Add the 1 kΩ/2 kΩ divider.
+- **No divider in the flashing setup:** Nano `TX` (5 V) goes straight into ESP `RX0`
+  (3.3 V). It works, but each flashing session stresses the pin. Only matters while the
+  Nano is connected; an installed dongle on its own power supply doesn't need it. Add the
+  1 kΩ/2 kΩ divider to the flashing wiring if the second board will be flashed a lot.
 - On the PC, `pio` isn't on the PATH in a normal terminal. Use a PlatformIO terminal or
   `& "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"`.
 - The serial monitor misses the boot log if the ESP started before it opened. Touch EN
