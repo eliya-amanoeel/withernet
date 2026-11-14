@@ -1,11 +1,12 @@
 # Hand-off
 
-_Last updated: 2026-11-02, on the PC._
+_Last updated: 2026-11-14, on the Mac._
 
 ## Where we are
 
-- **Steps 1–3 are done, step 4 is under way.** Both WT32-ETH01 boards are flashed and
-  bench tested. Both dongles (Nibe and Checkwatt) have been live since 2026-11-02.
+- **Steps 1–4 are done, step 5 is next.** Both dongles (Nibe and Checkwatt) have been live
+  since 2026-11-02, both devices show up in the Deco app, and the Powerline adapters are
+  gone.
 - **The plan changed (2026-11-01): MAC-cloning bridge, not NAT.** The goal is a
   transparent passthrough where the Deco assigns the device's IP, like the Powerline
   adapters did. See [README](README.md#how-it-works-mac-cloning).
@@ -25,16 +26,27 @@ _Last updated: 2026-11-02, on the PC._
 
 ## Pick up here
 
-**Step 4: installing and watching (from 2026-11-02).**
+**Step 5: extras, in this order.** Each sub-step gets a bench test on a spare dongle (or
+with the Mac behind it) before it goes into the installed ones.
 
-- **Nibe dongle:** installed on its own power supply and live since 2026-11-02. The Nibe
-  shows up in the Deco app. It runs the build from just before the tidy-up (same
-  behaviour, plus a stats line in the serial log every 10 s); reflash only if it comes
-  back to the Nano anyway.
-- **Checkwatt dongle:** flashed with the current build, bench tested with the Mac (link
-  up, MAC learned, Wi-Fi connected), and installed on its own power supply on 2026-11-02.
-- **Next:** let both run until about 2026-11-09. If they stay stable (visible in the Deco
-  app, the Nibe and Checkwatt apps don't drop out), remove the Powerline adapters.
+1. **5a. Management IP.** The dongle answers on a fixed IP of its own, outside the Deco's
+   DHCP range, using the cloned MAC. Frames for that IP (and ARP for it) go to the
+   dongle's own IP stack; everything else is forwarded as before. Test: ping it from the
+   Mac while the device behind it keeps working.
+   - Deco DHCP pool: 192.168.68.50 – 192.168.71.250, router 192.168.68.1, mask
+     255.255.252.0. In use below the pool: .10–.12 and .20–.26 (Proxmox VMs).
+   - **Nibe dongle: 192.168.68.40. Checkwatt dongle: 192.168.68.41.** Set per board in
+     `src/secrets.h` (`MGMT_IP`) before flashing.
+   - The dongle has no IPv6 and only answers IPv4 + ARP for its own IP.
+2. **5b. Status page + OTA.** A small password-protected web server on the management IP:
+   a status page (Wi-Fi signal, learned MAC, link state, uptime) and a firmware upload.
+   This is the **last wired flash** per dongle; after it, updates go over Wi-Fi.
+3. **5c. Setup hotspot.** If the dongle can't join the Wi-Fi, it opens its own
+   password-protected hotspot for entering a new Wi-Fi name and password. Delivered OTA.
+
+**Installed dongles:** the Nibe one runs the build from just before the tidy-up (same
+behaviour, plus a stats line in the serial log every 10 s). The Checkwatt one runs the
+current build. Both get 5b over the wire, then everything later over the air.
 
 **Bench test (2026-11-02):** with the Mac on Ethernet behind the dongle (Wi-Fi off), the
 Mac got `192.168.68.74` from the Deco, reached the internet, and showed up in the Deco app
@@ -57,13 +69,6 @@ under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to 
 
 ## What comes after
 
-- **Step 5, extras, one at a time:**
-  - **Management IP:** the dongle borrows the device's MAC, so it has no address of its
-    own. Plan: a fixed IP outside the Deco's DHCP range that the dongle answers itself.
-  - **OTA updates** (password protected), using that management IP.
-  - **Setup hotspot:** if the dongle can't join the Wi-Fi, it opens its own
-    password-protected hotspot for entering a new Wi-Fi name and password.
-  - **Status page:** read-only or password protected. Wi-Fi signal, learned MAC, link state.
 - **Power:** see [hardware notes](docs/hardware-notes.md#power). Running: USB charger →
   USB-C breakout → ESP `5V`/`GND`.
 - **Hardware:** nothing needed. Optional: 1 kΩ + 2 kΩ resistors for the flashing divider

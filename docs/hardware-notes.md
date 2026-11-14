@@ -54,6 +54,6 @@ Limits:
 
 - **One device per dongle.** Frames from any other MAC are dropped.
 - **No address of its own.** The dongle borrows the device's identity, so OTA and a
-  status page need a separate management IP (planned for later).
+  status page need a separate management IP (step 5a, see [handoff](../handoff.md)).
 - **2.4 GHz only**, roughly 5–20 Mbps.
 - Uses undocumented ESP-IDF calls; pin the IDF version once it works.

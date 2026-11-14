@@ -7,6 +7,11 @@
 //   3. That MAC goes on the Wi-Fi station interface, then Wi-Fi starts and joins.
 //   4. Frames are forwarded both ways.
 //
+// Management IP: the dongle also has a small IP stack of its own on a fixed
+// address (MGMT_IP), sharing the cloned MAC. Wi-Fi frames for that IP, and ARP
+// asking for it, go to the dongle instead of the device. Nothing from the
+// Ethernet side ever reaches it.
+//
 // Based on the ESP-IDF eth2ap example, with the station interface instead of
 // the access point.
 #include <string.h>
@@ -15,6 +20,8 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_mac.h"
+#include "esp_netif.h"
+#include "esp_netif_defaults.h"
 #include "esp_private/wifi.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
@@ -50,15 +57,123 @@ static bool s_mac_learned;
 static bool s_eth_up;
 static bool s_wifi_up;
 
+// Management interface: an esp_netif (lwIP) whose "driver" is the Wi-Fi
+// station, fed by wifi_rx below.
+typedef struct {
+    esp_netif_driver_base_t base;
+} mgmt_driver_t;
+
+static mgmt_driver_t s_mgmt_driver;
+static esp_netif_t *s_mgmt_netif;
+static bool s_mgmt_started;
+static uint32_t s_mgmt_ip; // network byte order, as it appears in frames
+
+#define ETHERTYPE_IPV4 0x0800
+#define ETHERTYPE_ARP  0x0806
+#define ARP_TPA_OFFSET (14 + 24) // target protocol address in an ARP packet
+#define IPV4_DST_OFFSET (14 + 16)
+
+// Is this Wi-Fi frame for the dongle itself rather than the device?
+static bool is_for_mgmt(const uint8_t *frame, uint16_t len)
+{
+    if (len < 14) {
+        return false;
+    }
+    uint16_t type = (frame[12] << 8) | frame[13];
+    uint32_t ip;
+    if (type == ETHERTYPE_ARP && len >= ARP_TPA_OFFSET + 4) {
+        memcpy(&ip, frame + ARP_TPA_OFFSET, 4);
+    } else if (type == ETHERTYPE_IPV4 && len >= IPV4_DST_OFFSET + 4) {
+        memcpy(&ip, frame + IPV4_DST_OFFSET, 4);
+    } else {
+        return false;
+    }
+    return ip == s_mgmt_ip;
+}
+
 // Wi-Fi -> Ethernet. Runs in the Wi-Fi task; the driver already drops frames
 // that aren't for the cloned MAC (or broadcast/multicast).
 static esp_err_t wifi_rx(void *buffer, uint16_t len, void *eb)
 {
+    if (s_mgmt_started && is_for_mgmt(buffer, len)) {
+        // lwIP now owns eb and frees it through mgmt_free_rx.
+        esp_netif_receive(s_mgmt_netif, buffer, len, eb);
+        return ESP_OK;
+    }
     if (s_eth_up) {
         esp_eth_transmit(s_eth_handle, buffer, len);
     }
     esp_wifi_internal_free_rx_buffer(eb);
     return ESP_OK;
+}
+
+// Management -> Wi-Fi. esp_wifi_internal_tx copies the frame.
+static esp_err_t mgmt_transmit(void *h, void *buffer, size_t len)
+{
+    if (!s_wifi_up) {
+        return ESP_FAIL;
+    }
+    return esp_wifi_internal_tx(WIFI_IF_STA, buffer, len);
+}
+
+static esp_err_t mgmt_transmit_wrap(void *h, void *buffer, size_t len, void *netstack_buf)
+{
+    return mgmt_transmit(h, buffer, len);
+}
+
+static void mgmt_free_rx(void *h, void *buffer)
+{
+    esp_wifi_internal_free_rx_buffer(buffer);
+}
+
+static esp_err_t mgmt_post_attach(esp_netif_t *netif, void *args)
+{
+    mgmt_driver_t *driver = args;
+    driver->base.netif = netif;
+    esp_netif_driver_ifconfig_t cfg = {
+        .handle = driver,
+        .transmit = mgmt_transmit,
+        .transmit_wrap = mgmt_transmit_wrap,
+        .driver_free_rx_buffer = mgmt_free_rx,
+    };
+    return esp_netif_set_driver_config(netif, &cfg);
+}
+
+static void init_mgmt(void)
+{
+    ESP_ERROR_CHECK(esp_netif_init());
+    s_mgmt_ip = esp_ip4addr_aton(MGMT_IP);
+
+    esp_netif_ip_info_t ip_info = {
+        .ip.addr = s_mgmt_ip,
+        .netmask.addr = esp_ip4addr_aton(MGMT_NETMASK),
+        .gw.addr = esp_ip4addr_aton(MGMT_GATEWAY),
+    };
+    esp_netif_inherent_config_t base = ESP_NETIF_INHERENT_DEFAULT_WIFI_STA();
+    // Fixed IP: no DHCP client, no gratuitous ARP, no MLD (no IPv6 at all: it
+    // would share the device's MAC and so its link-local address). The netif
+    // goes up when Wi-Fi connects, see wifi_event_handler.
+    base.flags = 0;
+    base.ip_info = &ip_info;
+    base.if_key = "MGMT";
+    base.if_desc = "mgmt";
+
+    esp_netif_config_t cfg = {
+        .base = &base,
+        .stack = ESP_NETIF_NETSTACK_DEFAULT_WIFI_STA,
+    };
+    s_mgmt_netif = esp_netif_new(&cfg);
+    s_mgmt_driver.base.post_attach = mgmt_post_attach;
+    ESP_ERROR_CHECK(esp_netif_attach(s_mgmt_netif, &s_mgmt_driver));
+}
+
+// Called once the MAC is known: the netif needs it before starting.
+static void start_mgmt(void)
+{
+    ESP_ERROR_CHECK(esp_netif_set_mac(s_mgmt_netif, s_device_mac));
+    esp_netif_action_start(s_mgmt_netif, NULL, 0, NULL);
+    s_mgmt_started = true;
+    ESP_LOGI(TAG, "management IP " MGMT_IP);
 }
 
 // Ethernet -> queue. Runs in the EMAC task, so hand the frame off instead of
@@ -83,6 +198,7 @@ static void learn_mac(const uint8_t *src)
     s_mac_learned = true;
     ESP_LOGI(TAG, "device MAC " MACSTR ", joining Wi-Fi as it", MAC2STR(s_device_mac));
     ESP_ERROR_CHECK(esp_wifi_set_mac(WIFI_IF_STA, s_device_mac));
+    start_mgmt();
     ESP_ERROR_CHECK(esp_wifi_start());
     // Power save makes the radio doze between beacons and delays frames by
     // hundreds of ms. A bridge has to stay awake.
@@ -136,12 +252,16 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         // Register here: the driver only delivers frames to us once associated.
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, wifi_rx);
         s_wifi_up = true;
+        esp_netif_action_connected(s_mgmt_netif, NULL, 0, NULL);
         break;
     case WIFI_EVENT_STA_DISCONNECTED: {
         wifi_event_sta_disconnected_t *event = data;
         ESP_LOGW(TAG, "Wi-Fi disconnected (reason %d), retrying", event->reason);
         s_wifi_up = false;
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
+        if (s_mgmt_started) {
+            esp_netif_action_disconnected(s_mgmt_netif, NULL, 0, NULL);
+        }
         vTaskDelay(pdMS_TO_TICKS(1000));
         esp_wifi_connect();
         break;
@@ -243,6 +363,7 @@ void app_main(void)
     s_eth2wifi_queue = xQueueCreate(QUEUE_LEN, sizeof(eth_frame_t));
     xTaskCreate(eth2wifi_task, "eth2wifi", 4096, NULL, configMAX_PRIORITIES - 3, NULL);
 
+    init_mgmt();
     init_wifi();
     init_ethernet();
 }
