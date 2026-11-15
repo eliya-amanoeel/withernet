@@ -26,6 +26,19 @@ _Last updated: 2026-11-15, on the PC._
 
 ## Pick up here
 
+**In progress (2026-11-15): move the management IPs.** Nibe `.40` → `192.168.68.2`,
+Checkwatt `.41` → `192.168.68.3`. Why: `.20–.49` is the homelab's range for Proxmox
+guests and the NAS firewall blocks it; `.2–.9` is free (checked from the Mac: no ping, no
+ARP reply) and becomes the block for network devices.
+- Over Wi-Fi only, Checkwatt first. Per board: set `MGMT_IP` in `src/secrets.h` (on the
+  PC; the Mac's copy is only the template), build, upload through the old IP's page.
+  Check: it answers on the new IP, `status.json` shows Ethernet and Wi-Fi up, the device
+  behind it is still online. Then the Nibe.
+- Before each upload, confirm `MGMT_IP` and which board it is: the rollback only checks
+  Wi-Fi, so a wrong IP gets through and needs a wired flash.
+- Afterwards, update the IPs in this file and `secrets.example.h`. Show the diff and wait
+  for an OK before committing.
+
 **Done (2026-11-15):** 5a + 5b built on the PC, bench tested with the Mac (internet OK,
 status page OK, Mac listed in the Deco under its own IP `.74`, OTA update confirmed), and
 flashed into both dongles. Checkwatt answers on `.41`, Nibe on `.40`; both show Ethernet
