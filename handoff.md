@@ -41,6 +41,14 @@ with the Mac behind it) before it goes into the installed ones.
 2. **5b. Status page + OTA.** A small password-protected web server on the management IP:
    a status page (Wi-Fi signal, learned MAC, link state, uptime) and a firmware upload.
    This is the **last wired flash** per dongle; after it, updates go over Wi-Fi.
+   - `http://<mgmt ip>/` is the status page with the upload form, and `/status.json` is
+     the same data for scripts. Login `admin`, password `ADMIN_PASS` in `src/secrets.h`.
+     Plain HTTP with basic auth: fine on the home LAN, not for anything exposed.
+   - The partition table changes to two OTA slots (`partitions.csv`), so this flash
+     needs **Erase Flash first**, then Upload. Delete `sdkconfig.wt32-eth01` before
+     building so the new `sdkconfig.defaults` apply.
+   - **Rollback:** a new firmware has 2 minutes after boot to get Wi-Fi up. If it
+     doesn't (or crashes), the dongle reboots into the previous firmware.
 3. **5c. Setup hotspot.** If the dongle can't join the Wi-Fi, it opens its own
    password-protected hotspot for entering a new Wi-Fi name and password. Delivered OTA.
 
@@ -64,8 +72,8 @@ under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to 
   Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after; measured with
   temporary counters, since removed). Fine for the Nibe; tune only if it causes trouble.
 - No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
-- No OTA, status page or hotspot yet. Adding any of them means one more wired flash per
-  dongle; after OTA, updates go over Wi-Fi.
+- No setup hotspot yet. Status page and OTA are step 5b; until a dongle has 5b, any
+  change means a wired flash.
 
 ## What comes after
 

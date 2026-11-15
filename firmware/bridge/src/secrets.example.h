@@ -9,3 +9,6 @@
 #define MGMT_IP      "192.168.68.40"
 #define MGMT_NETMASK "255.255.252.0"
 #define MGMT_GATEWAY "192.168.68.1"
+
+// Password for the status page and firmware upload (user "admin").
+#define ADMIN_PASS "choose-a-password"

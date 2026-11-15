@@ -22,7 +22,9 @@
 #include "esp_mac.h"
 #include "esp_netif.h"
 #include "esp_netif_defaults.h"
+#include "esp_ota_ops.h"
 #include "esp_private/wifi.h"
+#include "esp_timer.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
@@ -31,9 +33,14 @@
 #include "driver/gpio.h"
 #include "nvs_flash.h"
 
+#include "bridge.h"
 #include "secrets.h"
 
 static const char *TAG = "bridge";
+
+// After an update over Wi-Fi, the new firmware must get Wi-Fi up within this
+// time, or the dongle reboots into the previous one.
+#define ROLLBACK_TIMEOUT_US (120 * 1000 * 1000LL)
 
 // WT32-ETH01 Ethernet wiring, see docs/hardware-notes.md.
 #define ETH_POWER_GPIO 16
@@ -56,6 +63,16 @@ static uint8_t s_device_mac[6];
 static bool s_mac_learned;
 static bool s_eth_up;
 static bool s_wifi_up;
+static bool s_pending_verify; // running a new OTA firmware, not confirmed yet
+
+// For the status page. Plain counters: a torn read now and then is fine.
+static int s_eth_mbit;
+static bool s_eth_full_duplex;
+static uint32_t s_wifi_disconnects;
+static int s_last_disconnect_reason;
+static uint32_t s_eth_to_wifi;
+static uint32_t s_wifi_to_eth;
+static uint32_t s_eth_to_wifi_dropped;
 
 // Management interface: an esp_netif (lwIP) whose "driver" is the Wi-Fi
 // station, fed by wifi_rx below.
@@ -102,6 +119,7 @@ static esp_err_t wifi_rx(void *buffer, uint16_t len, void *eb)
     }
     if (s_eth_up) {
         esp_eth_transmit(s_eth_handle, buffer, len);
+        s_wifi_to_eth++;
     }
     esp_wifi_internal_free_rx_buffer(eb);
     return ESP_OK;
@@ -182,6 +200,7 @@ static esp_err_t eth_rx(esp_eth_handle_t eth_handle, uint8_t *buffer, uint32_t l
 {
     eth_frame_t frame = { .packet = buffer, .length = len };
     if (xQueueSend(s_eth2wifi_queue, &frame, pdMS_TO_TICKS(QUEUE_TIMEOUT_MS)) != pdTRUE) {
+        s_eth_to_wifi_dropped++;
         free(buffer);
         return ESP_FAIL;
     }
@@ -230,11 +249,17 @@ static void eth2wifi_task(void *arg)
                          MAC2STR(src));
             }
         } else if (s_wifi_up) {
+            esp_err_t err;
             int waited = 0;
-            while (esp_wifi_internal_tx(WIFI_IF_STA, frame.packet, frame.length) != ESP_OK
+            while ((err = esp_wifi_internal_tx(WIFI_IF_STA, frame.packet, frame.length)) != ESP_OK
                    && waited < WIFI_TX_TIMEOUT_MS) {
                 vTaskDelay(pdMS_TO_TICKS(2));
                 waited += 2;
+            }
+            if (err == ESP_OK) {
+                s_eth_to_wifi++;
+            } else {
+                s_eth_to_wifi_dropped++;
             }
         }
         free(frame.packet);
@@ -253,10 +278,19 @@ static void wifi_event_handler(void *arg, esp_event_base_t base, int32_t id, voi
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, wifi_rx);
         s_wifi_up = true;
         esp_netif_action_connected(s_mgmt_netif, NULL, 0, NULL);
+        if (s_pending_verify) {
+            s_pending_verify = false;
+            esp_ota_mark_app_valid_cancel_rollback();
+            ESP_LOGI(TAG, "new firmware confirmed");
+        }
         break;
     case WIFI_EVENT_STA_DISCONNECTED: {
         wifi_event_sta_disconnected_t *event = data;
         ESP_LOGW(TAG, "Wi-Fi disconnected (reason %d), retrying", event->reason);
+        if (s_wifi_up) {
+            s_wifi_disconnects++;
+        }
+        s_last_disconnect_reason = event->reason;
         s_wifi_up = false;
         esp_wifi_internal_reg_rxcb(WIFI_IF_STA, NULL);
         if (s_mgmt_started) {
@@ -282,6 +316,8 @@ static void eth_event_handler(void *arg, esp_event_base_t base, int32_t id, void
         ESP_LOGI(TAG, "Ethernet link up, %s Mbit %s duplex",
                  speed == ETH_SPEED_100M ? "100" : "10",
                  duplex == ETH_DUPLEX_FULL ? "full" : "half");
+        s_eth_mbit = speed == ETH_SPEED_100M ? 100 : 10;
+        s_eth_full_duplex = duplex == ETH_DUPLEX_FULL;
         s_eth_up = true;
         break;
     }
@@ -292,6 +328,48 @@ static void eth_event_handler(void *arg, esp_event_base_t base, int32_t id, void
     default:
         break;
     }
+}
+
+void bridge_get_status(bridge_status_t *out)
+{
+    *out = (bridge_status_t){
+        .mac_learned = s_mac_learned,
+        .eth_up = s_eth_up,
+        .eth_mbit = s_eth_mbit,
+        .eth_full_duplex = s_eth_full_duplex,
+        .wifi_up = s_wifi_up,
+        .wifi_disconnects = s_wifi_disconnects,
+        .last_disconnect_reason = s_last_disconnect_reason,
+        .eth_to_wifi = s_eth_to_wifi,
+        .wifi_to_eth = s_wifi_to_eth,
+        .eth_to_wifi_dropped = s_eth_to_wifi_dropped,
+    };
+    memcpy(out->device_mac, s_device_mac, 6);
+}
+
+static void rollback_timeout(void *arg)
+{
+    if (s_pending_verify) {
+        ESP_LOGE(TAG, "new firmware didn't get Wi-Fi up, rolling back");
+        esp_ota_mark_app_invalid_rollback_and_reboot();
+    }
+}
+
+// A firmware installed over Wi-Fi boots "pending verify". It gets confirmed
+// when Wi-Fi connects; until then a timer stands ready to roll back.
+static void check_new_firmware(void)
+{
+    esp_ota_img_states_t state;
+    if (esp_ota_get_state_partition(esp_ota_get_running_partition(), &state) != ESP_OK
+        || state != ESP_OTA_IMG_PENDING_VERIFY) {
+        return;
+    }
+    ESP_LOGW(TAG, "running new firmware, confirming once Wi-Fi is up");
+    s_pending_verify = true;
+    esp_timer_handle_t timer;
+    const esp_timer_create_args_t args = { .callback = rollback_timeout, .name = "rollback" };
+    ESP_ERROR_CHECK(esp_timer_create(&args, &timer));
+    ESP_ERROR_CHECK(esp_timer_start_once(timer, ROLLBACK_TIMEOUT_US));
 }
 
 static void init_wifi(void)
@@ -363,7 +441,9 @@ void app_main(void)
     s_eth2wifi_queue = xQueueCreate(QUEUE_LEN, sizeof(eth_frame_t));
     xTaskCreate(eth2wifi_task, "eth2wifi", 4096, NULL, configMAX_PRIORITIES - 3, NULL);
 
+    check_new_firmware();
     init_mgmt();
+    web_start();
     init_wifi();
     init_ethernet();
 }
