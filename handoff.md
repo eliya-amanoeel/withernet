@@ -4,7 +4,7 @@ _Last updated: 2026-11-15, on the PC._
 
 ## Where we are
 
-- **Steps 1–4, 5a and 5b are done; 5c is next.** Both dongles (Nibe and Checkwatt) have been live
+- **Steps 1–5 are done** (5c, the setup hotspot, is parked as a future feature). Both dongles (Nibe and Checkwatt) have been live
   since 2026-11-02, both devices show up in the Deco app, and the Powerline adapters are
   gone.
 - **The plan changed (2026-11-01): MAC-cloning bridge, not NAT.** The goal is a
@@ -32,13 +32,14 @@ flashed into both dongles. Checkwatt answers on `.41`, Nibe on `.40`; both show 
 and Wi-Fi up. No more wired flashes: update via `http://<mgmt ip>/`.
 
 **Next:** check the Checkwatt shows up in the Deco app (it was slow to appear; it took a
-long time after the first install too). Then 5c (setup hotspot), delivered OTA.
+long time after the first install too). Nothing else planned; see
+[What comes after](#what-comes-after) for the setup hotspot.
 
 Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi → Ethernet
 frame dropped in a burst). Harmless once; if it repeats, raise the EMAC TX buffers in
 `sdkconfig.defaults`.
 
-**Step 5: extras, in this order.** Each sub-step gets a bench test on a spare dongle (or
+**Step 5: extras (done).** Each sub-step gets a bench test on a spare dongle (or
 with the Mac behind it) before it goes into the installed ones.
 
 1. **5a. Management IP.** The dongle answers on a fixed IP of its own, outside the Deco's
@@ -61,8 +62,6 @@ with the Mac behind it) before it goes into the installed ones.
      building so the new `sdkconfig.defaults` apply.
    - **Rollback:** a new firmware has 2 minutes after boot to get Wi-Fi up. If it
      doesn't (or crashes), the dongle reboots into the previous firmware.
-3. **5c. Setup hotspot.** If the dongle can't join the Wi-Fi, it opens its own
-   password-protected hotspot for entering a new Wi-Fi name and password. Delivered OTA.
 
 **Installed dongles:** both run `fbe4ebc` (5a + 5b), Nibe `192.168.68.40`, Checkwatt
 `192.168.68.41`. Login `admin` / `ADMIN_PASS`.
@@ -83,12 +82,22 @@ under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to 
   Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after; measured with
   temporary counters, since removed). Fine for the Nibe; tune only if it causes trouble.
 - No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
-- No setup hotspot yet (5c). If a dongle can't join Wi-Fi, it needs a wired flash.
+- No setup hotspot (future feature). If a dongle can't join Wi-Fi, it needs a wired flash.
 - Bench test gotcha: if the Mac gets a non-`192.168.68–71.x` address, its Ethernet is set
   to a manual IP. Set Configure IPv4 to "Using DHCP".
 
 ## What comes after
 
+- **Future feature: setup hotspot (was 5c).** Without it, a Wi-Fi password change means
+  taking both dongles back to the Nano. Proposed design (not started):
+  - After ~5 min of failing to join, open a hotspot `withernet-<last 4 of MAC>`, with a
+    password from `src/secrets.h`. Keep retrying the old network meanwhile, so a Deco
+    reboot or short outage doesn't strand it on the hotspot.
+  - Setup page at `192.168.4.1`: Wi-Fi name + password, saved to NVS (overriding
+    `secrets.h`), then reboot.
+  - The 2 min OTA rollback fires before the 5 min hotspot, so a bad update still rolls
+    back first.
+  - Delivered OTA; test on the Checkwatt first by setting a wrong password.
 - **Power:** see [hardware notes](docs/hardware-notes.md#power). Running: USB charger →
   USB-C breakout → ESP `5V`/`GND`.
 - **Hardware:** nothing needed. Optional: 1 kΩ + 2 kΩ resistors for the flashing divider
