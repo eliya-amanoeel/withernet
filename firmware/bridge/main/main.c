@@ -36,9 +36,16 @@
 #include "bridge.h"
 #include "secrets.h"
 
-// Set per dongle in platformio.ini: build with `pio run -e nibe` or `-e checkwatt`.
+// Set per dongle in main/CMakeLists.txt: build with tools/build-signed.sh <board>.
 #if !defined(MGMT_IP) || !defined(BOARD_NAME)
-#error "MGMT_IP/BOARD_NAME not set: build a board env (pio run -e nibe or -e checkwatt)"
+#error "MGMT_IP/BOARD_NAME not set: build with -DBOARD=<nibe|checkwatt>"
+#endif
+
+// Rollback test only (BOARD=checkwatt-badwifi): a wrong Wi-Fi password, so the
+// new firmware never gets Wi-Fi up and the 2-minute rollback fires.
+#ifdef TEST_BAD_WIFI
+#undef WIFI_PASS
+#define WIFI_PASS "wrong-password-rollback-test"
 #endif
 
 static const char *TAG = "bridge";
@@ -357,6 +364,12 @@ static void rollback_timeout(void *arg)
     if (s_pending_verify) {
         ESP_LOGE(TAG, "new firmware didn't get Wi-Fi up, rolling back");
         esp_ota_mark_app_invalid_rollback_and_reboot();
+        // Only returns if it refused: it checks the previous firmware's
+        // signature, and one from before signing has none. A reboot still rolls
+        // back: the bootloader aborts a firmware that was never confirmed and
+        // boots the previous one (it doesn't check signatures).
+        ESP_LOGW(TAG, "previous firmware is unsigned, rebooting so the bootloader rolls back");
+        esp_restart();
     }
 }
 

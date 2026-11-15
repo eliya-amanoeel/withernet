@@ -34,7 +34,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 1. **Documentation**: how to wire, flash and install the thing, step by step.
 2. **Transparent bridge**: the router assigns the device's IP, as with Powerline.
 3. **Painless updates**: flash over USB-serial once, then update over Wi-Fi (OTA) from the
-   dongle's status page.
+   dongle's status page. Updates must be signed with a key kept on the Mac.
 
 ## Status
 
@@ -47,6 +47,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 | 3 | Minimal bridge firmware (MAC cloning), bench test with a laptop | done |
 | 4 | Install at the Nibe and Checkwatt, run for a week | done |
 | 5 | Extras: management IP (5a), status page + OTA updates (5b) | done |
+| 6 | Signed firmware updates, admin password per dongle | in progress |
 
 Future feature: a setup hotspot for changing the Wi-Fi without a wired flash (see
 [handoff](handoff.md#what-comes-after)).
@@ -55,13 +56,18 @@ Future feature: a setup hotspot for changing the Wi-Fi without a wired flash (se
 
 ```
 docs/                      guides, in the order you need them
-firmware/bridge/           the bridge firmware (ESP-IDF, MAC cloning)
+firmware/bridge/           the bridge firmware (ESP-IDF 5.3.1, MAC cloning), built with idf.py
 tools/usb-serial-bridge/   turns the Nano into a USB-serial adapter for flashing
+tools/build-signed.sh      builds a dongle's firmware and signs it for a Wi-Fi update
 ```
 
 ## Prerequisites
 
-- VS Code with the **PlatformIO IDE** extension
+- The Mac (builds and Wi-Fi updates happen there), with **ESP-IDF 5.3.1** (see
+  [handoff](handoff.md#esp-idf-on-the-mac))
+- VS Code with the **PlatformIO IDE** extension, only for the Nano's sketch
+- The signing key in `~/.withernet/` on the Mac, never in the repo (see
+  [handoff](handoff.md#pick-up-here))
 - A USB data cable (not charge-only) for the Nano. Our USB-A → USB-C cable turned out
   to be charge-only; a USB-C ↔ USB-C cable works.
 

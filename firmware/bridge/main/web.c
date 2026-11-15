@@ -1,5 +1,8 @@
 // Management web server, reachable on MGMT_IP only (the Ethernet side has no
-// IP stack). Everything needs basic auth: user "admin", password ADMIN_PASS.
+// IP stack). Everything needs basic auth: user "admin", password
+// ADMIN_PASS_BOARD (the dongle's own one from secrets.h, picked in
+// main/CMakeLists.txt).
+// Uploads must be signed with the key on the Mac; esp_ota_end() checks that.
 //
 //   GET  /             status page with a firmware upload form
 //   GET  /status.json  the same status, for scripts
@@ -25,9 +28,16 @@
 #include "bridge.h"
 #include "secrets.h"
 
+#ifdef ADMIN_PASS
+#error "secrets.h: replace ADMIN_PASS with ADMIN_PASS_NIBE and ADMIN_PASS_CHECKWATT (see secrets.example.h)"
+#endif
+// At least 20 characters; at most 100 so "Basic " + base64 fits s_expected_auth.
+_Static_assert(sizeof(ADMIN_PASS_BOARD) - 1 >= 20, "admin password too short: use 20+ characters");
+_Static_assert(sizeof(ADMIN_PASS_BOARD) - 1 <= 100, "admin password too long: 100 characters max");
+
 static const char *TAG = "web";
 
-static char s_expected_auth[160]; // "Basic " + base64("admin:" ADMIN_PASS)
+static char s_expected_auth[160]; // "Basic " + base64("admin:" password)
 
 static bool authorized(httpd_req_t *req)
 {
@@ -166,9 +176,11 @@ static esp_err_t update_post(httpd_req_t *req)
         left -= n;
     }
 
-    // Checks the image (checksum, chip) before we boot into it.
+    // Checks the image (checksum, chip, signature) before we boot into it.
     if (esp_ota_end(ota) != ESP_OK || esp_ota_set_boot_partition(part) != ESP_OK) {
-        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST, "firmware image is not valid\n");
+        ESP_LOGW(TAG, "update refused: image not valid or not signed with our key");
+        httpd_resp_send_err(req, HTTPD_400_BAD_REQUEST,
+                            "refused: not a valid firmware signed with the withernet key\n");
         return ESP_FAIL;
     }
     ESP_LOGI(TAG, "update done, rebooting");
@@ -181,7 +193,7 @@ static esp_err_t update_post(httpd_req_t *req)
 void web_start(void)
 {
     char userpass[128];
-    snprintf(userpass, sizeof(userpass), "admin:%s", ADMIN_PASS);
+    snprintf(userpass, sizeof(userpass), "admin:%s", ADMIN_PASS_BOARD);
     size_t olen = 0;
     strcpy(s_expected_auth, "Basic ");
     ESP_ERROR_CHECK(mbedtls_base64_encode((unsigned char *)s_expected_auth + 6,

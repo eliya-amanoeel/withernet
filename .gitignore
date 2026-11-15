@@ -6,6 +6,12 @@
 .DS_Store
 secrets.ini
 secrets.h
-sdkconfig.wt32-eth01
-sdkconfig.nibe
-sdkconfig.checkwatt
+firmware/bridge/build/
+sdkconfig
+sdkconfig.*
+!sdkconfig.defaults
+# The signing key lives in ~/.withernet/, never in the repo. In case a copy
+# lands here anyway: private keys are never committed.
+*.pem
+*.key
+signing-key*

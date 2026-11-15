@@ -1,5 +1,8 @@
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_ESP_CONSOLE_UART_BAUDRATE=115200
+# Wired flashing goes through the Nano, which drops data while esptool's reset
+# holds DTR/RTS low, so don't reset (see docs/01-flashing.md).
+CONFIG_ESPTOOLPY_BEFORE_NORESET=y
 CONFIG_ETH_USE_ESP32_EMAC=y
 CONFIG_ETH_PHY_INTERFACE_RMII=y
 # Two OTA slots (partitions.csv) and rollback if a new firmware doesn't come up.
@@ -8,3 +11,12 @@ CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions.csv"
 CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y
 # Browsers send more header bytes than the 512 default allows.
 CONFIG_HTTPD_MAX_REQ_HDR_LEN=1024
+# Updates over Wi-Fi must be signed (ECDSA) with the key on the Mac. No Secure
+# Boot (see handoff.md). The build doesn't sign: tools/build-signed.sh does, so
+# the private key stays out of the repo. Only the public key is built in.
+CONFIG_SECURE_SIGNED_APPS_NO_SECURE_BOOT=y
+CONFIG_SECURE_SIGNED_APPS_ECDSA_SCHEME=y
+CONFIG_SECURE_SIGNED_ON_UPDATE_NO_SECURE_BOOT=y
+# CONFIG_SECURE_SIGNED_ON_BOOT_NO_SECURE_BOOT is not set
+# CONFIG_SECURE_BOOT_BUILD_SIGNED_BINARIES is not set
+CONFIG_SECURE_BOOT_VERIFICATION_KEY="signature_verification_key.bin"

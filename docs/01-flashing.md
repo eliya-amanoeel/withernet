@@ -2,8 +2,14 @@
 
 The WT32-ETH01 has no USB port, so the first flash goes through our Nano, used as a
 USB-to-serial adapter. After that, firmware is updated over Wi-Fi from the dongle's status page
-(`http://<management ip>/`, upload `firmware.bin`).
-Repeat this for every new dongle, or when a dongle can't be reached over Wi-Fi.
+(`http://<management ip>/`, upload the signed `firmware-signed.bin` from
+`tools/build-signed.sh`).
+Repeat this for every new dongle, when a dongle can't be reached over Wi-Fi, or if the
+signing key is lost (a wired flash accepts any build).
+
+The Nano's own sketch (B) is built with PlatformIO. The ESP is flashed with ESP-IDF 5.3.1
+on the Mac (D, E). Wired flashing used to be done on the PC with PlatformIO; the ESP-IDF
+commands below haven't been tried with the Nano yet.
 
 > **Our Nano** is a Nano-sized clone with an **ATmega32U4** (the big chip reads
 > `MEGA32U4`). It does USB itself, so Windows lists it as **Arduino Leonardo**
@@ -28,7 +34,8 @@ The `tools/usb-serial-bridge` sketch passes bytes between USB and the Nano's `D0
 pins, at whatever baud rate the computer opens the port with. Skip this if the Nano
 already runs it.
 
-In a **PlatformIO: New Terminal** (so `pio` is on the PATH):
+In a **PlatformIO: New Terminal** (so `pio` is on the PATH; on the Mac,
+`~/.platformio/penv/bin/pio`):
 
 ```sh
 cd tools/usb-serial-bridge
@@ -62,29 +69,34 @@ Unplug the Nano first. The wiring is **crossed** (TX to RX):
 
 ## D. Flash
 
-**Erase first** on a board's first flash, or when `partitions.csv` changes. `pio run -t
-erase` ignores `no_reset` and fails, so call esptool directly (touch `EN` to `GND` first):
+Set up ESP-IDF in the terminal first (see [handoff](../handoff.md#esp-idf-on-the-mac)):
+`. ~/withernet/tools/idf-env.sh`. Then, from `firmware/bridge`, with the Nano's port
+from step A.
 
-```powershell
-& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" "$env:USERPROFILE\.platformio\packages\tool-esptoolpy\esptool.py" --chip esp32 --port COM6 --baud 115200 --before no_reset erase_flash
-```
-
-Each dongle has its own build target in `platformio.ini` (`nibe`, `checkwatt`) with its
-management IP. Pick it with `-e`; a plain `pio run` without one fails on purpose.
-
-Plug the Nano into the computer. The ESP powers up in download mode. Then, from the
-firmware's folder:
+**Erase first** on a board's first flash, or when `partitions.csv` changes (touch `EN` to
+`GND` first):
 
 ```sh
-pio run -e checkwatt -t upload --upload-port COM6
+idf.py -B build/checkwatt -DBOARD=checkwatt -p /dev/cu.usbmodemXXXX -b 115200 erase-flash
 ```
 
-**Speed:** flash at **460800 baud or lower** (`upload_speed` in `platformio.ini`). A 16 MHz
-AVR can't generate 921600 accurately. On the PC, only 115200 works.
+Each dongle has its own build (`BOARD=nibe`, `BOARD=checkwatt`) with its management IP;
+without `BOARD` the build stops on purpose. Plug the Nano into the computer. The ESP
+powers up in download mode. Then:
 
-**No auto-reset:** set `board_upload.before_reset = no_reset` in `platformio.ini`. The
-Nano drops data to the PC while DTR/RTS are low, and esptool's default reset leaves them
-low, so the upload fails with `No serial data received`.
+```sh
+idf.py -B build/checkwatt -DBOARD=checkwatt -p /dev/cu.usbmodemXXXX -b 115200 flash
+```
+
+This writes the bootloader, partition table and firmware. A wired flash doesn't need a
+signature; updates over Wi-Fi do.
+
+**Speed:** flash at **460800 baud or lower** (`-b`). A 16 MHz AVR can't generate 921600
+accurately. On the PC, only 115200 worked.
+
+**No auto-reset:** `sdkconfig.defaults` sets `CONFIG_ESPTOOLPY_BEFORE_NORESET`. The Nano
+drops data while DTR/RTS are low, and esptool's default reset leaves them low, so the
+upload fails with `No serial data received`.
 
 The bridge sketch has no auto-reset, so to flash again: unplug and replug the Nano (or
 briefly touch `EN` to `GND`) with the boot jumper still in place.
@@ -95,4 +107,5 @@ briefly touch `EN` to `GND`) with the boot jumper still in place.
 2. **Remove the `IO0` → `GND` jumper.** On the WT32-ETH01, `IO0` is also the 50 MHz
    Ethernet clock; with the jumper in, Ethernet won't work.
 3. Power it up again (Nano or USB charger, not both). To watch the serial log, keep the
-   Nano connected and run `pio device monitor --port COM6 --baud 115200`.
+   Nano connected and run
+   `idf.py -B build/checkwatt -p /dev/cu.usbmodemXXXX monitor --no-reset`.
