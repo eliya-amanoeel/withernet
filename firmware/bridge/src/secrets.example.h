@@ -4,9 +4,8 @@
 #define WIFI_SSID "your-wifi-name"
 #define WIFI_PASS "your-wifi-password"
 
-// The dongle's own fixed IP, outside the router's DHCP pool. One per dongle:
-// Nibe 192.168.68.40, Checkwatt 192.168.68.41 (see handoff.md).
-#define MGMT_IP      "192.168.68.40"
+// Network for the dongle's own fixed IP. The IP itself is per dongle and set in
+// platformio.ini (env:nibe, env:checkwatt).
 #define MGMT_NETMASK "255.255.252.0"
 #define MGMT_GATEWAY "192.168.68.1"
 

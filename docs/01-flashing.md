@@ -69,13 +69,14 @@ erase` ignores `no_reset` and fails, so call esptool directly (touch `EN` to `GN
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" "$env:USERPROFILE\.platformio\packages\tool-esptoolpy\esptool.py" --chip esp32 --port COM6 --baud 115200 --before no_reset erase_flash
 ```
 
-Set `MGMT_IP` in `src/secrets.h` for this board before building (see `secrets.example.h`).
+Each dongle has its own build target in `platformio.ini` (`nibe`, `checkwatt`) with its
+management IP. Pick it with `-e`; a plain `pio run` without one fails on purpose.
 
 Plug the Nano into the computer. The ESP powers up in download mode. Then, from the
 firmware's folder:
 
 ```sh
-pio run -t upload --upload-port COM6
+pio run -e checkwatt -t upload --upload-port COM6
 ```
 
 **Speed:** flash at **460800 baud or lower** (`upload_speed` in `platformio.ini`). A 16 MHz

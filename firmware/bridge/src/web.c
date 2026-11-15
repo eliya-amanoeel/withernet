@@ -44,10 +44,10 @@ static bool authorized(httpd_req_t *req)
 
 static const char PAGE[] =
     "<!doctype html><html><head><meta charset=\"utf-8\">"
-    "<meta name=\"viewport\" content=\"width=device-width\"><title>withernet</title>"
+    "<meta name=\"viewport\" content=\"width=device-width\"><title>withernet " BOARD_NAME "</title>"
     "<style>body{font-family:sans-serif;margin:1em;max-width:40em}"
     "pre{background:#eee;padding:1em;overflow-x:auto}</style></head><body>"
-    "<h1>withernet</h1><p id=\"sig\"></p><pre id=\"s\">loading...</pre>"
+    "<h1>withernet: " BOARD_NAME " (" MGMT_IP ")</h1><p id=\"sig\"></p><pre id=\"s\">loading...</pre>"
     "<h2>Firmware update</h2>"
     "<input type=\"file\" id=\"f\" accept=\".bin\"> <button onclick=\"up()\">Upload</button>"
     "<p id=\"m\"></p>"
@@ -87,7 +87,7 @@ static esp_err_t status_get(httpd_req_t *req)
 
     char buf[768];
     snprintf(buf, sizeof(buf),
-             "{\"firmware\":\"%s\",\"built\":\"%s %s\",\"uptime_s\":%llu,"
+             "{\"board\":\"" BOARD_NAME "\",\"ip\":\"" MGMT_IP "\",\"firmware\":\"%s\",\"built\":\"%s %s\",\"uptime_s\":%llu,"
              "\"device_mac\":\"" MACSTR "\",\"mac_learned\":%s,"
              "\"ethernet\":{\"up\":%s,\"mbit\":%d,\"full_duplex\":%s},"
              "\"wifi\":{\"up\":%s,\"rssi\":%d,\"channel\":%d,\"ap\":\"" MACSTR "\","

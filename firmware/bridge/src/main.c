@@ -36,6 +36,11 @@
 #include "bridge.h"
 #include "secrets.h"
 
+// Set per dongle in platformio.ini: build with `pio run -e nibe` or `-e checkwatt`.
+#if !defined(MGMT_IP) || !defined(BOARD_NAME)
+#error "MGMT_IP/BOARD_NAME not set: build a board env (pio run -e nibe or -e checkwatt)"
+#endif
+
 static const char *TAG = "bridge";
 
 // After an update over Wi-Fi, the new firmware must get Wi-Fi up within this
@@ -191,7 +196,7 @@ static void start_mgmt(void)
     ESP_ERROR_CHECK(esp_netif_set_mac(s_mgmt_netif, s_device_mac));
     esp_netif_action_start(s_mgmt_netif, NULL, 0, NULL);
     s_mgmt_started = true;
-    ESP_LOGI(TAG, "management IP " MGMT_IP);
+    ESP_LOGI(TAG, "board " BOARD_NAME ", management IP " MGMT_IP);
 }
 
 // Ethernet -> queue. Runs in the EMAC task, so hand the frame off instead of

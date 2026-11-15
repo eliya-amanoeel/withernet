@@ -26,23 +26,17 @@ _Last updated: 2026-11-15, on the PC._
 
 ## Pick up here
 
-**In progress (2026-11-15): move the management IPs.** Nibe `.40` → `192.168.68.2`,
-Checkwatt `.41` → `192.168.68.3`. Why: `.20–.49` is the homelab's range for Proxmox
-guests and the NAS firewall blocks it; `.2–.9` is free (checked from the Mac: no ping, no
-ARP reply) and becomes the block for network devices.
-- Over Wi-Fi only, Checkwatt first. Per board: set `MGMT_IP` in `src/secrets.h` (on the
-  PC; the Mac's copy is only the template), build, upload through the old IP's page.
-  Check: it answers on the new IP, `status.json` shows Ethernet and Wi-Fi up, the device
-  behind it is still online. Then the Nibe.
-- Before each upload, confirm `MGMT_IP` and which board it is: the rollback only checks
-  Wi-Fi, so a wrong IP gets through and needs a wired flash.
-- Afterwards, update the IPs in this file and `secrets.example.h`. Show the diff and wait
-  for an OK before committing.
+**Done (2026-11-15): management IPs moved** to Nibe `192.168.68.2`, Checkwatt
+`192.168.68.3` (`.20–.49` is the homelab's Proxmox range and the NAS firewall blocks it;
+`.2–.9` is now the block for network devices). Each dongle has its own build target:
+`pio run -e nibe` / `pio run -e checkwatt` (IP in `platformio.ini`, not `secrets.h`), and
+the status page heading and `status.json` show the board name and IP. Both updated over
+Wi-Fi and checked: Ethernet and Wi-Fi up, device behind it online.
 
 **Done (2026-11-15):** 5a + 5b built on the PC, bench tested with the Mac (internet OK,
 status page OK, Mac listed in the Deco under its own IP `.74`, OTA update confirmed), and
-flashed into both dongles. Checkwatt answers on `.41`, Nibe on `.40`; both show Ethernet
-and Wi-Fi up. No more wired flashes: update via `http://<mgmt ip>/`.
+flashed into both dongles (then on `.40`/`.41`, since moved to `.2`/`.3`); both show
+Ethernet and Wi-Fi up. No more wired flashes: update via `http://<mgmt ip>/`.
 
 **Next:** check the Checkwatt shows up in the Deco app (it was slow to appear; it took a
 long time after the first install too). Nothing else planned; see
@@ -60,9 +54,9 @@ with the Mac behind it) before it goes into the installed ones.
    dongle's own IP stack; everything else is forwarded as before. Test: ping it from the
    Mac while the device behind it keeps working.
    - Deco DHCP pool: 192.168.68.50 – 192.168.71.250, router 192.168.68.1, mask
-     255.255.252.0. In use below the pool: .10–.12 and .20–.26 (Proxmox VMs).
-   - **Nibe dongle: 192.168.68.40. Checkwatt dongle: 192.168.68.41.** Set per board in
-     `src/secrets.h` (`MGMT_IP`) before flashing.
+     255.255.252.0. In use below the pool: .2–.3 (dongles), .10–.12 and .20–.26 (Proxmox VMs).
+   - **Nibe dongle: 192.168.68.2. Checkwatt dongle: 192.168.68.3.** Set per board in
+     `platformio.ini` (`env:nibe`, `env:checkwatt`); build with `pio run -e <board>`.
    - The dongle has no IPv6 and only answers IPv4 + ARP for its own IP.
 2. **5b. Status page + OTA.** A small password-protected web server on the management IP:
    a status page (Wi-Fi signal, learned MAC, link state, uptime) and a firmware upload.
@@ -76,8 +70,8 @@ with the Mac behind it) before it goes into the installed ones.
    - **Rollback:** a new firmware has 2 minutes after boot to get Wi-Fi up. If it
      doesn't (or crashes), the dongle reboots into the previous firmware.
 
-**Installed dongles:** both run `fbe4ebc` (5a + 5b), Nibe `192.168.68.40`, Checkwatt
-`192.168.68.41`. Login `admin` / `ADMIN_PASS`.
+**Installed dongles:** both run the per-board build (`29fcdbc` + this change), Nibe
+`192.168.68.2`, Checkwatt `192.168.68.3`. Login `admin` / `ADMIN_PASS`.
 
 **Bench test (2026-11-02):** with the Mac on Ethernet behind the dongle (Wi-Fi off), the
 Mac got `192.168.68.74` from the Deco, reached the internet, and showed up in the Deco app

@@ -7,3 +7,5 @@
 secrets.ini
 secrets.h
 sdkconfig.wt32-eth01
+sdkconfig.nibe
+sdkconfig.checkwatt
