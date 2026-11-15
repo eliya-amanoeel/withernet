@@ -26,6 +26,23 @@ _Last updated: 2026-11-14, on the Mac._
 
 ## Pick up here
 
+**Next actions (2026-11-15).** 5a and 5b are written and pushed but **never compiled**:
+they were written on the Mac, which has no PlatformIO. Go one step at a time:
+
+1. On the PC, add `MGMT_IP` (`"192.168.68.41"` for the Checkwatt, which goes first),
+   `MGMT_NETMASK`, `MGMT_GATEWAY` and `ADMIN_PASS` to `src/secrets.h`; see
+   `src/secrets.example.h`.
+2. Delete `sdkconfig.wt32-eth01`, then build. Fix any compile errors.
+3. Bench: Checkwatt dongle on the Nano, **Erase Flash**, then Upload.
+4. Mac on Ethernet behind it (Wi-Fi off): serial log should show `management IP`, the Mac
+   should get internet, and `http://192.168.68.41/` should show the status page (from
+   another machine on the network).
+5. Try an update over Wi-Fi from the page, check it comes back and says
+   `new firmware confirmed`.
+6. Reinstall it at the Checkwatt; then the same for the Nibe dongle with `.40`.
+
+Watch for: the Deco app listing the device under the management IP instead of its own.
+
 **Step 5: extras, in this order.** Each sub-step gets a bench test on a spare dongle (or
 with the Mac behind it) before it goes into the installed ones.
 
