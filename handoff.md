@@ -1,10 +1,10 @@
 # Hand-off
 
-_Last updated: 2026-11-14, on the Mac._
+_Last updated: 2026-11-15, on the PC._
 
 ## Where we are
 
-- **Steps 1–4 are done, step 5 is next.** Both dongles (Nibe and Checkwatt) have been live
+- **Steps 1–4, 5a and 5b are done; 5c is next.** Both dongles (Nibe and Checkwatt) have been live
   since 2026-11-02, both devices show up in the Deco app, and the Powerline adapters are
   gone.
 - **The plan changed (2026-11-01): MAC-cloning bridge, not NAT.** The goal is a
@@ -26,22 +26,17 @@ _Last updated: 2026-11-14, on the Mac._
 
 ## Pick up here
 
-**Next actions (2026-11-15).** 5a and 5b are written and pushed but **never compiled**:
-they were written on the Mac, which has no PlatformIO. Go one step at a time:
+**Done (2026-11-15):** 5a + 5b built on the PC, bench tested with the Mac (internet OK,
+status page OK, Mac listed in the Deco under its own IP `.74`, OTA update confirmed), and
+flashed into both dongles. Checkwatt answers on `.41`, Nibe on `.40`; both show Ethernet
+and Wi-Fi up. No more wired flashes: update via `http://<mgmt ip>/`.
 
-1. On the PC, add `MGMT_IP` (`"192.168.68.41"` for the Checkwatt, which goes first),
-   `MGMT_NETMASK`, `MGMT_GATEWAY` and `ADMIN_PASS` to `src/secrets.h`; see
-   `src/secrets.example.h`.
-2. Delete `sdkconfig.wt32-eth01`, then build. Fix any compile errors.
-3. Bench: Checkwatt dongle on the Nano, **Erase Flash**, then Upload.
-4. Mac on Ethernet behind it (Wi-Fi off): serial log should show `management IP`, the Mac
-   should get internet, and `http://192.168.68.41/` should show the status page (from
-   another machine on the network).
-5. Try an update over Wi-Fi from the page, check it comes back and says
-   `new firmware confirmed`.
-6. Reinstall it at the Checkwatt; then the same for the Nibe dongle with `.40`.
+**Next:** check the Checkwatt shows up in the Deco app (it was slow to appear; it took a
+long time after the first install too). Then 5c (setup hotspot), delivered OTA.
 
-Watch for: the Deco app listing the device under the management IP instead of its own.
+Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi → Ethernet
+frame dropped in a burst). Harmless once; if it repeats, raise the EMAC TX buffers in
+`sdkconfig.defaults`.
 
 **Step 5: extras, in this order.** Each sub-step gets a bench test on a spare dongle (or
 with the Mac behind it) before it goes into the installed ones.
@@ -69,9 +64,8 @@ with the Mac behind it) before it goes into the installed ones.
 3. **5c. Setup hotspot.** If the dongle can't join the Wi-Fi, it opens its own
    password-protected hotspot for entering a new Wi-Fi name and password. Delivered OTA.
 
-**Installed dongles:** the Nibe one runs the build from just before the tidy-up (same
-behaviour, plus a stats line in the serial log every 10 s). The Checkwatt one runs the
-current build. Both get 5b over the wire, then everything later over the air.
+**Installed dongles:** both run `fbe4ebc` (5a + 5b), Nibe `192.168.68.40`, Checkwatt
+`192.168.68.41`. Login `admin` / `ADMIN_PASS`.
 
 **Bench test (2026-11-02):** with the Mac on Ethernet behind the dongle (Wi-Fi off), the
 Mac got `192.168.68.74` from the Deco, reached the internet, and showed up in the Deco app
@@ -89,8 +83,9 @@ under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to 
   Ethernet → Wi-Fi frames (127 in the first 30 s on the Mac, none after; measured with
   temporary counters, since removed). Fine for the Nibe; tune only if it causes trouble.
 - No status LED: the WT32-ETH01 has only a power LED. Watch the serial log instead.
-- No setup hotspot yet. Status page and OTA are step 5b; until a dongle has 5b, any
-  change means a wired flash.
+- No setup hotspot yet (5c). If a dongle can't join Wi-Fi, it needs a wired flash.
+- Bench test gotcha: if the Mac gets a non-`192.168.68–71.x` address, its Ethernet is set
+  to a manual IP. Set Configure IPv4 to "Using DHCP".
 
 ## What comes after
 
@@ -113,6 +108,9 @@ under its own MAC. Ping to the router: 0% loss, mostly 2–10 ms with spikes to 
 - **Uploads need `board_upload.before_reset = no_reset`** (set in `platformio.ini`). The
   Nano's USB serial drops data to the PC while DTR/RTS are low, and esptool's default
   reset leaves them low. Without it: `Failed to connect to ESP32: No serial data received`.
+- **`pio run -t erase` ignores `no_reset`** and fails with `No serial data received`.
+  Erase with esptool directly instead (EN to GND first, use the Nano's port):
+  `& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" "$env:USERPROFILE\.platformio\packages\tool-esptoolpy\esptool.py" --chip esp32 --port COM6 --baud 115200 --before no_reset erase_flash`
 - **On the PC, only 115200 baud uploads work** (`upload_speed` in `platformio.ini`).
 - **No divider in the flashing setup:** Nano `TX` (5 V) goes straight into ESP `RX0`
   (3.3 V). It works, but each flashing session stresses the pin. Only matters while the

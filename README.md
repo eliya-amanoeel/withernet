@@ -33,7 +33,8 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 
 1. **Documentation**: how to wire, flash and install the thing, step by step.
 2. **Transparent bridge**: the router assigns the device's IP, as with Powerline.
-3. **Painless updates** (later): flash over USB-serial once, then update over Wi-Fi (OTA).
+3. **Painless updates**: flash over USB-serial once, then update over Wi-Fi (OTA) from the
+   dongle's status page.
 
 ## Status
 
@@ -45,7 +46,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 | 2 | [First serial flash of the WT32-ETH01 via the Nano](docs/01-flashing.md) | done |
 | 3 | Minimal bridge firmware (MAC cloning), bench test with a laptop | done |
 | 4 | Install at the Nibe and Checkwatt, run for a week | done |
-| 5 | Extras: management IP, status page + OTA updates, setup hotspot | next |
+| 5 | Extras: management IP (5a), status page + OTA updates (5b), setup hotspot (5c) | 5a, 5b done; 5c next |
 
 ## Repo layout
 

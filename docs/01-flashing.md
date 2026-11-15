@@ -1,7 +1,8 @@
 # 1. Flash a WT32-ETH01 over serial
 
 The WT32-ETH01 has no USB port, so the first flash goes through our Nano, used as a
-USB-to-serial adapter. After that, firmware can be updated over Wi-Fi (once OTA exists).
+USB-to-serial adapter. After that, firmware is updated over Wi-Fi from the dongle's status page
+(`http://<management ip>/`, upload `firmware.bin`).
 Repeat this for every new dongle, or when a dongle can't be reached over Wi-Fi.
 
 > **Our Nano** is a Nano-sized clone with an **ATmega32U4** (the big chip reads
@@ -60,6 +61,15 @@ Unplug the Nano first. The wiring is **crossed** (TX to RX):
   the existing firmware instead of waiting for a new one.
 
 ## D. Flash
+
+**Erase first** on a board's first flash, or when `partitions.csv` changes. `pio run -t
+erase` ignores `no_reset` and fails, so call esptool directly (touch `EN` to `GND` first):
+
+```powershell
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" "$env:USERPROFILE\.platformio\packages\tool-esptoolpy\esptool.py" --chip esp32 --port COM6 --baud 115200 --before no_reset erase_flash
+```
+
+Set `MGMT_IP` in `src/secrets.h` for this board before building (see `secrets.example.h`).
 
 Plug the Nano into the computer. The ESP powers up in download mode. Then, from the
 firmware's folder:
