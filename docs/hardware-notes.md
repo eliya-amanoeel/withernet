@@ -6,7 +6,7 @@ Wiring for flashing is in the [flashing guide](01-flashing.md).
 
 | When | Source | Wiring |
 |------|--------|--------|
-| Flashing | PC USB → Nano | Nano `5V` → ESP `5V`, `GND` → `GND` |
+| Flashing | Computer USB → Nano | Nano `5V` → ESP `5V`, `GND` → `GND` |
 | Running | USB phone charger (5 V, 1 A+) → USB breakout | breakout `5V`/`VBUS` → ESP `5V`, `GND` → `GND` (female-female jumpers, no soldering) |
 
 - Never connect both sources at once.
@@ -57,4 +57,5 @@ Limits:
   fixed management IP of its own for the status page and OTA (Nibe `.2`, Checkwatt
   `.3`, see [handoff](../handoff.md)).
 - **2.4 GHz only**, roughly 5–20 Mbps.
-- Uses undocumented ESP-IDF calls; pin the IDF version once it works.
+- Uses undocumented ESP-IDF calls, so ESP-IDF is pinned to 5.3.1 (see
+  [handoff](../handoff.md#gotchas-to-remember)).

@@ -24,7 +24,7 @@ charge-only (power LED lights, but no port appears).
 - **macOS:** `ls /dev/cu.*` and look for `/dev/cu.usbmodemXXXX`. On Apple Silicon,
   accept the *"Allow accessory to connect?"* prompt.
 
-`pio device list` shows the current port too. **The COM number can change** after an
+`pio device list` shows the current port too. **The port can change** after an
 upload (a 32U4 reports different USB IDs for its bootloader and for sketches), so check
 again if an upload can't find it.
 
@@ -42,7 +42,7 @@ cd tools/usb-serial-bridge
 pio run -t upload --upload-port COM6
 ```
 
-Replace `COM6` with your port.
+Replace `COM6` with your port (on the Mac, `/dev/cu.usbmodemXXXX`).
 
 **Optional loopback check:** unplug the Nano, jumper `D0` → `D1`, plug it in, run
 `pio device monitor --port COM6` and type. Characters should come back as-is, and stop

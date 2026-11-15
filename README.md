@@ -47,7 +47,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 | 3 | Minimal bridge firmware (MAC cloning), bench test with a laptop | done |
 | 4 | Install at the Nibe and Checkwatt, run for a week | done |
 | 5 | Extras: management IP (5a), status page + OTA updates (5b) | done |
-| 6 | Signed firmware updates, admin password per dongle | in progress |
+| 6 | Signed firmware updates, admin password per dongle | done |
 
 Future feature: a setup hotspot for changing the Wi-Fi without a wired flash (see
 [handoff](handoff.md#what-comes-after)).
@@ -67,7 +67,7 @@ tools/build-signed.sh      builds a dongle's firmware and signs it for a Wi-Fi u
   [handoff](handoff.md#esp-idf-on-the-mac))
 - VS Code with the **PlatformIO IDE** extension, only for the Nano's sketch
 - The signing key in `~/.withernet/` on the Mac, never in the repo (see
-  [handoff](handoff.md#pick-up-here))
+  [handoff](handoff.md#security))
 - A USB data cable (not charge-only) for the Nano. Our USB-A → USB-C cable turned out
   to be charge-only; a USB-C ↔ USB-C cable works.
 

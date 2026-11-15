@@ -4,7 +4,6 @@
 .vscode/launch.json
 .vscode/ipch
 .DS_Store
-secrets.ini
 secrets.h
 firmware/bridge/build/
 sdkconfig
