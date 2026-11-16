@@ -1,6 +1,6 @@
 # Hand-off
 
-_Last updated: 2026-11-15, on the Mac._
+_Last updated: 2026-11-16, on the Mac._
 
 ## Where we are
 
@@ -36,8 +36,6 @@ _Last updated: 2026-11-15, on the Mac._
 
 Nothing planned. Still open:
 
-- Check the Checkwatt shows up in the Deco app (it was slow to appear; it took a long
-  time after the first install too).
 - Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi →
   Ethernet frame dropped in a burst). Harmless once; if it repeats, raise the EMAC TX
   buffers in `sdkconfig.defaults`.
