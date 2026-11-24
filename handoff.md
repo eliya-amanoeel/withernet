@@ -1,6 +1,6 @@
 # Hand-off
 
-_Last updated: 2026-11-16, on the Mac._
+_Last updated: 2026-11-25, on the Mac._
 
 ## Where we are
 
@@ -34,16 +34,25 @@ _Last updated: 2026-11-16, on the Mac._
 
 ## Pick up here
 
-Nothing planned. Still open:
+**Planned (decided 2026-11-25): an open `/status.json`** (HL-122). Home Assistant polls it
+every 60 s, and with basic auth that sent the admin password in clear around the clock.
+`/status.json` will answer without a login; the status page and `/update` stay behind
+basic auth. HTTPS in the firmware was the other option, not chosen: the password would
+still be sent every minute, it needs a self-signed certificate per dongle and costs
+memory. Steps:
+
+1. Firmware: drop the login check from `/status.json` only (`status_get` in
+   `firmware/bridge/main/web.c`). Keep the JSON format: Home Assistant depends on it.
+2. Signed build and Wi-Fi update, Checkwatt first, then the Nibe. Check `/status.json`
+   answers without a login and the status page still asks for one.
+3. Homelab: remove basic auth from the REST sensors in
+   `docs/home-assistant/packages/withernet.yaml`, then close HL-122.
+
+Still open:
 
 - Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi →
   Ethernet frame dropped in a burst). Harmless once; if it repeats, raise the EMAC TX
   buffers in `sdkconfig.defaults`.
-- HA's polling sends the admin password in clear every 60 s (HL-122, see
-  [Security](#security)). Two options, neither decided: HTTPS in the firmware, or a
-  `/status.json` that needs no login and exposes nothing sensitive (upload and settings
-  stay behind basic auth). Either one widens the 2026-11-15 hardening scope, so it's
-  the owner's call.
 
 Next feature, if wanted: the [setup hotspot](#what-comes-after).
 
@@ -79,6 +88,7 @@ with the private key on the Mac, so a leaked admin password isn't enough to flas
   Assistant polls `/status.json` with basic auth every 60 s, so the password is on the
   wire continuously, not just when someone opens the status page. Still bounded by
   signed firmware (the password can't flash a dongle). Tracked in the homelab as HL-122.
+  Fix decided 2026-11-25: an open `/status.json` (see [Pick up here](#pick-up-here)).
 
 **Scope (decided 2026-11-15):** signed firmware plus a strong, unique admin password per
 dongle is enough. Don't widen the hardening beyond that.
@@ -90,6 +100,10 @@ dongle is enough. Don't widen the hardening beyond that.
   the dongle in hand (that's the household), burn eFuses for good, and need a wired
   flash. Revisit only if a dongle ends up somewhere people outside the household can
   reach.
+- **Widened 2026-11-25 (HL-122):** `/status.json` needs no login, so Home Assistant's
+  polling carries no password. It holds nothing sensitive: board, IP, firmware version,
+  uptime, MAC addresses, link and Wi-Fi state, frame counters, free memory. The status
+  page and `/update` stay behind basic auth.
 
 ## How the firmware behaves
 
@@ -108,8 +122,9 @@ dongle is enough. Don't widen the hardening beyond that.
     `.10–.12` and `.20–.26` Proxmox VMs. `.20–.49` is the homelab's Proxmox range and
     the NAS firewall blocks it.
 - **Status page** `http://<mgmt ip>/` (Wi-Fi signal, learned MAC, link state, uptime,
-  firmware upload); `/status.json` is the same data for scripts. Home Assistant will
-  read `status.json`, so keep its format.
+  firmware upload); `/status.json` is the same data for scripts. Home Assistant reads
+  it every 60 s (since 2026-11-24), so keep its format. Planned: no login for
+  `/status.json` (see [Pick up here](#pick-up-here)).
 - Two OTA slots (`partitions.csv`). Changing the partition table needs a wired flash
   with erase.
 - Wi-Fi power save is off: with it on, pings jumped to hundreds of ms.

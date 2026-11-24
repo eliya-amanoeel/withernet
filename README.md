@@ -48,6 +48,7 @@ Plenty for a heat pump and an energy gateway. See [hardware notes](docs/hardware
 | 4 | Install at the Nibe and Checkwatt, run for a week | done |
 | 5 | Extras: management IP (5a), status page + OTA updates (5b) | done |
 | 6 | Signed firmware updates, admin password per dongle | done |
+| 7 | `/status.json` without login, so Home Assistant's polling sends no password (HL-122) | planned |
 
 Future feature: a setup hotspot for changing the Wi-Fi without a wired flash (see
 [handoff](handoff.md#what-comes-after)).
