@@ -35,12 +35,6 @@ _Last updated: 2026-11-25, on the Mac._
 
 ## Pick up here
 
-**Left for HL-122, in the homelab:** remove basic auth from the REST sensors in
-`docs/home-assistant/packages/withernet.yaml`, then close HL-122. Until then Home
-Assistant still sends the password every 60 s (the dongles ignore it). The withernet
-side is done: both dongles run `b2b5894` with an open `/status.json` (see
-[History](#history)).
-
 Still open:
 
 - Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi →
@@ -77,12 +71,13 @@ with the private key on the Mac, so a leaked admin password isn't enough to flas
   (the bootloader doesn't check signatures).
 - Not protected: someone with the dongle in hand can flash anything over serial and read
   the Wi-Fi and admin passwords from flash. The admin password travels over plain HTTP
-  (basic auth): fine on the home LAN, not for anything exposed. Since 2026-11-24 Home
-  Assistant polls `/status.json` with basic auth every 60 s, so the password is on the
-  wire continuously, not just when someone opens the status page. Still bounded by
-  signed firmware (the password can't flash a dongle). Tracked in the homelab as HL-122.
-  Fixed on the dongles 2026-11-25: `/status.json` needs no login, so once HA's config
-  drops the password, its polling carries none (see [Pick up here](#pick-up-here)).
+  (basic auth): fine on the home LAN, not for anything exposed. From 2026-11-24 to
+  2026-11-25 Home Assistant polled `/status.json` with basic auth every 60 s, so the
+  password was on the wire continuously, not just when someone opened the status page.
+  Still bounded by signed firmware (the password can't flash a dongle). Tracked in the
+  homelab as HL-122.
+  Fixed on the dongles 2026-11-25: `/status.json` needs no login, and HA's polling has
+  carried no password since 2026-11-25 (homelab HL-122, closed).
 
 **Scope (decided 2026-11-15):** signed firmware plus a strong, unique admin password per
 dongle is enough. Don't widen the hardening beyond that.
@@ -155,6 +150,7 @@ dongle is enough. Don't widen the hardening beyond that.
   problem.
 - **2026-11-25: open `/status.json`** (HL-122). `b2b5894` went on the Checkwatt, then the
   Nibe. On both, `/status.json` answered without a login and `/` still gave `401`.
+  HA switched over and HL-122 closed in the homelab, 2026-11-25.
 
 ## What comes after
 
