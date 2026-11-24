@@ -39,6 +39,11 @@ Nothing planned. Still open:
 - Seen once after an OTA reboot: `esp.emac: insufficient TX buffer size` (a Wi-Fi →
   Ethernet frame dropped in a burst). Harmless once; if it repeats, raise the EMAC TX
   buffers in `sdkconfig.defaults`.
+- HA's polling sends the admin password in clear every 60 s (HL-122, see
+  [Security](#security)). Two options, neither decided: HTTPS in the firmware, or a
+  `/status.json` that needs no login and exposes nothing sensitive (upload and settings
+  stay behind basic auth). Either one widens the 2026-11-15 hardening scope, so it's
+  the owner's call.
 
 Next feature, if wanted: the [setup hotspot](#what-comes-after).
 
@@ -70,7 +75,10 @@ with the private key on the Mac, so a leaked admin password isn't enough to flas
   (the bootloader doesn't check signatures).
 - Not protected: someone with the dongle in hand can flash anything over serial and read
   the Wi-Fi and admin passwords from flash. The admin password travels over plain HTTP
-  (basic auth): fine on the home LAN, not for anything exposed.
+  (basic auth): fine on the home LAN, not for anything exposed. Since 2026-11-24 Home
+  Assistant polls `/status.json` with basic auth every 60 s, so the password is on the
+  wire continuously, not just when someone opens the status page. Still bounded by
+  signed firmware (the password can't flash a dongle). Tracked in the homelab as HL-122.
 
 **Scope (decided 2026-11-15):** signed firmware plus a strong, unique admin password per
 dongle is enough. Don't widen the hardening beyond that.
