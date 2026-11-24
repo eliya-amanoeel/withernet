@@ -1,11 +1,12 @@
 // Management web server, reachable on MGMT_IP only (the Ethernet side has no
-// IP stack). Everything needs basic auth: user "admin", password
-// ADMIN_PASS_BOARD (the dongle's own one from secrets.h, picked in
-// main/CMakeLists.txt).
+// IP stack). Everything except /status.json needs basic auth: user "admin",
+// password ADMIN_PASS_BOARD (the dongle's own one from secrets.h, picked in
+// main/CMakeLists.txt). /status.json is open so Home Assistant's polling sends
+// no password (HL-122); it holds nothing sensitive.
 // Uploads must be signed with the key on the Mac; esp_ota_end() checks that.
 //
 //   GET  /             status page with a firmware upload form
-//   GET  /status.json  the same status, for scripts
+//   GET  /status.json  the same status, for scripts (no login)
 //   POST /update       raw firmware .bin as the body; reboots into it
 #include <inttypes.h>
 #include <stdio.h>
@@ -82,11 +83,9 @@ static esp_err_t root_get(httpd_req_t *req)
     return httpd_resp_send(req, PAGE, HTTPD_RESP_USE_STRLEN);
 }
 
+// No login on purpose (HL-122). Don't add secrets or settings to this output.
 static esp_err_t status_get(httpd_req_t *req)
 {
-    if (!authorized(req)) {
-        return ESP_OK;
-    }
     bridge_status_t st;
     bridge_get_status(&st);
     wifi_ap_record_t ap = { 0 };
