@@ -6,10 +6,11 @@ _Last updated: 2026-11-25, on the Mac._
 
 - **Both dongles are live** (since 2026-11-02): Nibe and Checkwatt show up in the Deco
   app, and the Powerline adapters are gone.
-- **Installed:** both run `b23f606` (signed firmware, since 2026-11-15). Nibe
-  `192.168.68.2`, Checkwatt `192.168.68.3`. Status page `http://<ip>/`, login `admin`
-  with each dongle's own password (`ADMIN_PASS_NIBE` / `ADMIN_PASS_CHECKWATT` in
-  `firmware/bridge/main/secrets.h`). Updates over Wi-Fi only, and they must be signed:
+- **Installed:** both run `b2b5894` (signed firmware, open `/status.json`, since
+  2026-11-25). Nibe `192.168.68.2`, Checkwatt `192.168.68.3`. Status page
+  `http://<ip>/`, login `admin` with each dongle's own password (`ADMIN_PASS_NIBE` /
+  `ADMIN_PASS_CHECKWATT` in `firmware/bridge/main/secrets.h`); `/status.json` needs no
+  login. Updates over Wi-Fi only, and they must be signed:
   see [Updating a dongle](#updating-a-dongle).
 - **Why the project exists:** the Powerline sender sits outside the full 10" rack, cabled
   to the UniFi switch. With Wi-Fi the Deco XE75 is the sender, so it goes away.
@@ -34,19 +35,11 @@ _Last updated: 2026-11-25, on the Mac._
 
 ## Pick up here
 
-**Planned (decided 2026-11-25): an open `/status.json`** (HL-122). Home Assistant polls it
-every 60 s, and with basic auth that sent the admin password in clear around the clock.
-`/status.json` will answer without a login; the status page and `/update` stay behind
-basic auth. HTTPS in the firmware was the other option, not chosen: the password would
-still be sent every minute, it needs a self-signed certificate per dongle and costs
-memory. Steps:
-
-1. Firmware: drop the login check from `/status.json` only (`status_get` in
-   `firmware/bridge/main/web.c`). Keep the JSON format: Home Assistant depends on it.
-2. Signed build and Wi-Fi update, Checkwatt first, then the Nibe. Check `/status.json`
-   answers without a login and the status page still asks for one.
-3. Homelab: remove basic auth from the REST sensors in
-   `docs/home-assistant/packages/withernet.yaml`, then close HL-122.
+**Left for HL-122, in the homelab:** remove basic auth from the REST sensors in
+`docs/home-assistant/packages/withernet.yaml`, then close HL-122. Until then Home
+Assistant still sends the password every 60 s (the dongles ignore it). The withernet
+side is done: both dongles run `b2b5894` with an open `/status.json` (see
+[History](#history)).
 
 Still open:
 
@@ -88,7 +81,8 @@ with the private key on the Mac, so a leaked admin password isn't enough to flas
   Assistant polls `/status.json` with basic auth every 60 s, so the password is on the
   wire continuously, not just when someone opens the status page. Still bounded by
   signed firmware (the password can't flash a dongle). Tracked in the homelab as HL-122.
-  Fix decided 2026-11-25: an open `/status.json` (see [Pick up here](#pick-up-here)).
+  Fixed on the dongles 2026-11-25: `/status.json` needs no login, so once HA's config
+  drops the password, its polling carries none (see [Pick up here](#pick-up-here)).
 
 **Scope (decided 2026-11-15):** signed firmware plus a strong, unique admin password per
 dongle is enough. Don't widen the hardening beyond that.
@@ -104,6 +98,8 @@ dongle is enough. Don't widen the hardening beyond that.
   polling carries no password. It holds nothing sensitive: board, IP, firmware version,
   uptime, MAC addresses, link and Wi-Fi state, frame counters, free memory. The status
   page and `/update` stay behind basic auth.
+  HTTPS in the firmware was the other option, not chosen: the password would still be
+  sent every minute, it needs a self-signed certificate per dongle and costs memory.
 
 ## How the firmware behaves
 
@@ -122,9 +118,9 @@ dongle is enough. Don't widen the hardening beyond that.
     `.10–.12` and `.20–.26` Proxmox VMs. `.20–.49` is the homelab's Proxmox range and
     the NAS firewall blocks it.
 - **Status page** `http://<mgmt ip>/` (Wi-Fi signal, learned MAC, link state, uptime,
-  firmware upload); `/status.json` is the same data for scripts. Home Assistant reads
-  it every 60 s (since 2026-11-24), so keep its format. Planned: no login for
-  `/status.json` (see [Pick up here](#pick-up-here)).
+  firmware upload); `/status.json` is the same data for scripts. It needs no login
+  (since 2026-11-25, HL-122). Home Assistant reads it every 60 s (since 2026-11-24), so
+  keep its format.
 - Two OTA slots (`partitions.csv`). Changing the partition table needs a wired flash
   with erase.
 - Wi-Fi power save is off: with it on, pings jumped to hundreds of ms.
@@ -157,6 +153,8 @@ dongle is enough. Don't widen the hardening beyond that.
   signed-image padding), and on the Mac its Intel CMake can't run Apple's `git`, so the
   firmware version became `1`. Both needed workarounds; ESP-IDF's own build has neither
   problem.
+- **2026-11-25: open `/status.json`** (HL-122). `b2b5894` went on the Checkwatt, then the
+  Nibe. On both, `/status.json` answered without a login and `/` still gave `401`.
 
 ## What comes after
 
