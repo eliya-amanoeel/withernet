@@ -56,6 +56,12 @@ static bool authorized(httpd_req_t *req)
 static const char PAGE[] =
     "<!doctype html><html><head><meta charset=\"utf-8\">"
     "<meta name=\"viewport\" content=\"width=device-width\"><title>withernet " BOARD_NAME "</title>"
+    // Favicon inline (no extra request); its colour is per dongle, see main/CMakeLists.txt.
+    "<link rel=\"icon\" href=\"data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>"
+    "<rect width='32' height='32' rx='7' fill='%23" ICON_COLOR "'/>"
+    "<g fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'>"
+    "<path d='M6 13a14 14 0 0 1 20 0'/><path d='M10.5 17.5a7.5 7.5 0 0 1 11 0'/></g>"
+    "<circle cx='16' cy='22.5' r='2.3' fill='%23fff'/></svg>\">"
     "<style>"
     ":root{color-scheme:light dark;--fg:#1d1d1f;--mut:#6e6e73;--bg:#f5f5f7;--card:#fff;--line:#e5e5ea;--ok:#2e9d4f;--warn:#c98a00;--bad:#d1372e}"
     "@media(prefers-color-scheme:dark){:root{--fg:#f2f2f7;--mut:#98989f;--bg:#111113;--card:#1c1c1e;--line:#2c2c2e}}"
